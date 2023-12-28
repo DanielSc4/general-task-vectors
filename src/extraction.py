@@ -64,7 +64,7 @@ def get_mean_activations(tokenized_prompts: list[torch.Tensor], important_ids: l
         config (dict[str, any]): model's config
 
     Returns:
-        tuple[torch.Tensor, list[torch.Tensor]: mean of activations and list of tokenized output from the model
+        tuple[torch.Tensor, list[torch.Tensor]: mean of activations (`n_layers, n_heads, seq_len, d_head`) and list of tokenized output from the model
     """
 
     activations, outputs = extract_activations(tokenized_prompts=tokenized_prompts, model=model, config=config)
