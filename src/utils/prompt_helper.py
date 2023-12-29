@@ -82,7 +82,7 @@ def tokenize_ICL(tokenizer, ICL_examples: int, dataset: list[tuple[str, str]]):
     Args:
         tokenizer (HuggingFace tokenizer): tokenizer from HuggingFace
         ICL_examples (int): number of ICL examples (excluding the last one without the solution)
-        dataset (list[tuple[str, str]]): list of tuples (query, answer)
+        dataset (list[tuple[str, str, optional str]]): list of tuples (query, answer) default or (query, wrong_answer, correct_answer) if the labels are shufflet to trick the model
 
     Returns:
         tuple[list[torch.LongTensor], list[list[int]]]: tokenied prompt and important ids for each prompt
@@ -98,14 +98,21 @@ def tokenize_ICL(tokenizer, ICL_examples: int, dataset: list[tuple[str, str]]):
                 queries=list(map(lambda x: x[0], group)),
                 answers=list(map(lambda x: x[1], group))[:-1],
             )
+            # store prompt (X) and label (placed in 
+            #    the last position (pos group[-1][1] if (query, answer) is provided 
+            #    or pos group[-1][2] if (query, wrong_answer, correct_answer); 
+            # using -1 to get both of them.
             prompts.append(
-                (X, group[-1][1])  # prompt and label
+                (X, group[-1][-1])  
             )
         
     tokenized_and_ids = list(map(
         lambda prmpt: tokenize_from_template(tokenizer=tokenizer, promtp_w_template=prmpt[0]),
         prompts
     ))
-    tokenized, ids = zip(*tokenized_and_ids)
+    
+    labels = list(map(lambda x: x[1], prompts))
+    tokenized, ids = zip(*tokenized_and_ids, )
 
-    return tokenized, ids
+    return tokenized, ids, labels
+
