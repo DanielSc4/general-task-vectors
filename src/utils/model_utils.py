@@ -3,18 +3,17 @@ import numpy as np
 from nnsight import LanguageModel
 import os
 import random
+import functools
+# thanks to https://stackoverflow.com/questions/31174295/getattr-and-setattr-on-nested-subobjects-chained-properties
+def rsetattr(obj, attr, val):
+    pre, _, post = attr.rpartition('.')
+    return setattr(rgetattr(obj, pre) if pre else obj, post, val)
 
-def get_submodule(model, module_path: list[str]):
-    """Return the model subomudle following the specied path
+def rgetattr(obj, attr, *args):
+    def _getattr(obj, attr):
+        return getattr(obj, attr, *args)
+    return functools.reduce(_getattr, [obj] + attr.split('.'))
 
-    Args:
-        model (_type_): transformer model
-        module_path (list[str]): list of submodules to explore, ordered
-    """
-    final_module = model
-    for module in module_path:
-        final_module = getattr(final_module, module)
-    return final_module
 
 
 

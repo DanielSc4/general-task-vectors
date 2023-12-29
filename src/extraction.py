@@ -1,8 +1,9 @@
 import torch
 import numpy as np
 from transformers import AutoModelForCausalLM
+from tqdm import tqdm
 
-
+from .utils.model_utils import rsetattr, rgetattr
 
 def split_activation(activations, config):
     """split the residual stream (d_model) into n_heads activations for each layer
@@ -36,13 +37,13 @@ def extract_activations(tokenized_prompts: list[torch.Tensor], model: AutoModelF
         tuple[list[torch.Tensor], list[torch.Tensor]]: tuple corresponding to the activations and the model output
     """
     dataset_activations, outputs = [], []
-    for prompt in tokenized_prompts:
-        with model.generate(max_new_tokens=3) as generator:
+    for prompt in tqdm(tokenized_prompts, total = len(tokenized_prompts), desc = 'extracting activations'):
+        with model.generate(max_new_tokens=3, pad_token_id=model.tokenizer.eos_token_id) as generator:
             # invoke works in a generation context, where operations on inputs and outputs are tracked
             with generator.invoke(prompt) as invoker:
                 layer_attn_activations = []
-                for layer in range(config['n_layer']):
-                    layer_attn_activations.append(model.transformer.h[layer].attn.c_proj.output.save())
+                for layer_name in config['attn_hook_names']:
+                    layer_attn_activations.append(rgetattr(model, layer_name).output.save())
         outputs.append(generator.output)
 
         # get the values from the activations
