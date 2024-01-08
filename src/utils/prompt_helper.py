@@ -1,4 +1,5 @@
 import torch
+import random
 
 def build_prompt_txt(queries: list[str], answers: list[str]):
     """Build the prompt following the default template. Provide a list of queries (length = n ICL examples + 1)
@@ -115,4 +116,60 @@ def tokenize_ICL(tokenizer, ICL_examples: int, dataset: list[tuple[str, str]]):
     tokenized, ids = zip(*tokenized_and_ids, )
 
     return tokenized, ids, labels
+
+
+def randomize_dataset(dataset):
+    """shuffle the second column (labels) and copy the original column to a third one keeping the correct label
+    e.g. for antonym: (good, bad) -> (good, funny, bad)
+
+    Args:
+        dataset (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """
+    shuffled = list(map(lambda x: x[1], dataset))
+    random.shuffle(shuffled)
+
+    new_dataset = list(
+        zip(
+            list(map(lambda x: x[0], dataset)),     # input x
+            shuffled,     # new shuffled label (that make no sense)
+            list(map(lambda x: x[1], dataset)),     # old correct label
+    ))
+    
+    return new_dataset
+
+
+
+def pad_input(tokenized_prompts, max_len = 256, pad_token_id = 50256):
+    """pad a batched input 
+
+    Args:
+        tokenized_prompts (list[torch.Tensor]): list of tokenized sentences
+        max_len (int, optional): max len to pad. Defaults to 256.
+        pad_token_id (int, optional): as name. Defaults to tokenizer.eos_token_id.
+
+    Returns:
+        dict[torch.Tensor, torch.Tensor]: dict with padded sentences and corresponding attention mask
+    """
+    padded_prompts = []
+    attention_masks = []
+
+    # Process each tokenized prompt individually
+    for tokenized_prompt in tokenized_prompts:
+        padded_prompt = torch.nn.functional.pad(tokenized_prompt, pad=(0, max_len - len(tokenized_prompt)), value=pad_token_id)
+        padded_prompts.append(padded_prompt)
+
+        attention_mask = torch.ones(max_len, dtype=torch.long)
+        attention_mask[len(tokenized_prompt):] = 0
+        attention_masks.append(attention_mask)
+    
+    padded_prompts_tensor = torch.vstack(padded_prompts)
+    attention_masks_tensor = torch.vstack(attention_masks)
+
+    return {
+        "input_ids": padded_prompts_tensor,
+        "attention_mask": attention_masks_tensor,
+    }
 
