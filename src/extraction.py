@@ -4,6 +4,7 @@ from transformers import AutoModelForCausalLM
 from tqdm import tqdm
 
 from .utils.model_utils import rsetattr, rgetattr
+from transformers import AutoTokenizer
 
 def split_activation(activations, config):
     """split the residual stream (d_model) into n_heads activations for each layer
@@ -25,20 +26,26 @@ def split_activation(activations, config):
     return attn_activations
 
 
-def extract_activations(tokenized_prompts: list[torch.Tensor], model: AutoModelForCausalLM, config: dict[str, any]):
+def extract_activations(
+        tokenized_prompts: list[torch.Tensor], 
+        model: AutoModelForCausalLM, 
+        config: dict[str, any],
+        tokenizer: AutoTokenizer,
+    ):
     """Extract the activation and the output produced from the model using the tokenized prompts provided
 
     Args:
         tokenized_prompts (list[torch.Tensor]): list of tokenized prompts
         model (AutoModelForCausalLM): HuggingFace model
         config (dict[str, any]): model's config
+        tokenizer (AutoTokenizer): HuggingFace tokenizer
 
     Returns:
         tuple[list[torch.Tensor], list[torch.Tensor]]: tuple corresponding to the activations and the model output
     """
     dataset_activations, outputs = [], []
     for prompt in tqdm(tokenized_prompts, total = len(tokenized_prompts), desc = 'extracting activations'):
-        with model.generate(max_new_tokens=3, pad_token_id=model.tokenizer.eos_token_id) as generator:
+        with model.generate(max_new_tokens=1, pad_token_id=model.tokenizer.eos_token_id) as generator:
             # invoke works in a generation context, where operations on inputs and outputs are tracked
             with generator.invoke(prompt) as invoker:
                 layer_attn_activations = []
@@ -55,23 +62,48 @@ def extract_activations(tokenized_prompts: list[torch.Tensor], model: AutoModelF
     return dataset_activations, outputs
 
 
-def get_mean_activations(tokenized_prompts: list[torch.Tensor], important_ids: list[int], model: AutoModelForCausalLM, config: dict[str, any]):
+def get_mean_activations(
+        tokenized_prompts: list[torch.Tensor], 
+        important_ids: list[int], 
+        tokenizer: AutoTokenizer,
+        model: AutoModelForCausalLM, 
+        config: dict[str, any],
+        correct_labels: list[str],
+    ):
     """Compute the average of all the model's activation on the provided prompts
 
     Args:
         tokenized_prompts (list[torch.Tensor]): list of tokenized prompts
         important_ids (list[int]): list of important indexes i.e. the tokens where the average is computed
+        tokenizer (AutoTokenizer): HuggingFace tokenizer
         model (AutoModelForCausalLM): HuggingFace model
         config (dict[str, any]): model's config
+        correct_labels (list[str]): list of correct labels for each ICL prompt
 
     Returns:
-        tuple[torch.Tensor, list[torch.Tensor]: mean of activations (`n_layers, n_heads, seq_len, d_head`) and list of tokenized output from the model
+        torch.Tensor: mean of activations (`n_layers, n_heads, seq_len, d_head`)
     """
 
-    activations, outputs = extract_activations(tokenized_prompts=tokenized_prompts, model=model, config=config)
+    activations, outputs = extract_activations(
+        tokenized_prompts=tokenized_prompts, 
+        model=model, 
+        config=config,
+        tokenizer=tokenizer,
+    )
 
     # keep only important tokens
     activations_clean = [activations[i][:, :, important_ids[i], :] for i in range(len(activations))]
-    mean_activations = torch.stack(activations_clean).mean(axis = 0)
 
-    return mean_activations, outputs
+    # considering only the first token to evaluate the output
+    only_output_tokens = np.array(list(map(lambda x: x.squeeze()[-1].item(), outputs)))
+    only_labels_tokens = np.array([ele[0] for ele in tokenizer(correct_labels)['input_ids']])
+
+    correct_idx = (only_output_tokens == only_labels_tokens)
+    accuracy = correct_idx.sum() / len(correct_idx)
+    print(f'Model accuracy: {accuracy:.2f}')
+    
+    # using only activations from correct prediction to compute the mean_activations
+    correct_activations = torch.stack(activations_clean[correct_idx])
+    mean_activations = correct_activations.mean(axis = 0)
+
+    return mean_activations
