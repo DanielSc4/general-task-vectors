@@ -110,7 +110,9 @@ def compute_indirect_effect(
         for layer_i in range(config['n_layers']):
             for head_j in range(config['n_heads']):
 
-                pbar.set_description(f'Processing edited model (l: {layer_i}, h: {head_j})')                
+                pbar.set_description(
+                    f'Processing edited model (l: {layer_i}/{config["n_layers"]}, h: {head_j}/{config["n_heads"]})'
+                )
                 returned = replace_heads_w_avg(
                     tokenized_prompt=current_batch_tokens,
                     important_ids=current_batch_important_ids,
