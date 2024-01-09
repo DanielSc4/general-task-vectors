@@ -19,6 +19,7 @@ def rgetattr(obj, attr, *args):
 
 def load_gpt_model_and_tokenizer(
         model_name: str,
+        load_in_8bit: bool = False,
 ):
     
     if torch.cuda.is_available():
@@ -29,7 +30,7 @@ def load_gpt_model_and_tokenizer(
         device = 'cpu'
 
     if model_name == 'gpt2':
-        model = LanguageModel('gpt2', device_map=device)
+        model = LanguageModel('gpt2', device_map=device, load_in_8bit=load_in_8bit)
         # providing a standard config
         std_CONFIG = {
             'n_heads': model.config.n_head,
@@ -48,6 +49,7 @@ def load_gpt_model_and_tokenizer(
         }
     
     elif 'gpt-neox' in model_name.lower():
+        model = LanguageModel(model_name, device_map=device, load_in_8bit=load_in_8bit)
         std_CONFIG = {
             'n_heads': model.config.num_attention_heads,
             'n_layers': model.config.num_hidden_layers,
@@ -65,6 +67,7 @@ def load_gpt_model_and_tokenizer(
         }
 
     elif 'llama' in model_name.lower():
+        model = LanguageModel(model_name, device_map=device, load_in_8bit=load_in_8bit)
         std_CONFIG = {
             'n_heads': model.config.num_attention_heads,
             'n_layers': model.config.num_hidden_layers,
@@ -82,6 +85,7 @@ def load_gpt_model_and_tokenizer(
         }
 
     elif 'phi-2' in model_name.lower():
+        model = LanguageModel(model_name, device_map=device, trust_remote_code = True, load_in_8bit=load_in_8bit)
         std_CONFIG = {
             'n_heads': model.config.n_head,
             'n_layers': model.config.n_layer,
@@ -94,7 +98,7 @@ def load_gpt_model_and_tokenizer(
             ],
             'attn_name': 'mixer.out_proj',
             'attn_hook_names': [
-                f'model.layers.{layer}.mixer.out_proj' for layer in range(model.config.num_hidden_layers)
+                f'transformer.h.{layer}.mixer.out_proj' for layer in range(model.config.num_hidden_layers)
             ],
         }
 

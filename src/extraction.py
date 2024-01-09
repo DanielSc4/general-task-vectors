@@ -103,7 +103,7 @@ def get_mean_activations(
     correct_idx = (only_output_tokens == only_labels_tokens)
     accuracy = correct_idx.sum() / len(correct_idx)
     if correct_idx.sum() > 0:
-        print(f'Model accuracy: {accuracy:.2f}, using {correct_idx.sum()} to compute mean activations')
+        print(f'Model accuracy: {accuracy:.2f}, using {correct_idx.sum()} example to compute mean activations')
     else:
         print(f'Model accuracy is 0, mean_activations cannot be computed')
         return None
