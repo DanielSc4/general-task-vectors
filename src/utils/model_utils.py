@@ -1,9 +1,13 @@
 import torch
 import numpy as np
-from nnsight import LanguageModel
 import os
 import random
 import functools
+
+from nnsight import LanguageModel
+from transformers import AutoTokenizer
+
+
 # thanks to https://stackoverflow.com/questions/31174295/getattr-and-setattr-on-nested-subobjects-chained-properties
 def rsetattr(obj, attr, val):
     pre, _, post = attr.rpartition('.')
@@ -53,8 +57,26 @@ def load_gpt_model_and_tokenizer(
         std_CONFIG = {
             'n_heads': model.config.num_attention_heads,
             'n_layers': model.config.num_hidden_layers,
-            'd_model': model.config.name_or_path,     # residual stream
+            'd_model': model.config.hidden_size,     # residual stream
             'name': model.config.name_or_path,
+            'vocab_size': model.config.vocab_size,
+            'layer_name': 'gpt_neox.layers',
+            'layer_hook_names': [
+                f'gpt_neox.layers.{layer}' for layer in range(model.config.num_hidden_layers)
+            ],
+            'attn_name': 'attention.dense',
+            'attn_hook_names': [
+                f'gpt_neox.layers.{layer}.attention.dense' for layer in range(model.config.num_hidden_layers)
+            ],
+        }
+
+    elif 'pythia' in model_name.lower():
+        model = LanguageModel(model_name, device_map=device, load_in_8bit=load_in_8bit)
+        std_CONFIG = {
+            'n_heads': model.config.num_attention_heads,
+            'n_layers': model.config.num_hidden_layers,
+            'd_model': model.config.hidden_size,     # residual stream
+            'name': model.config.model_type,
             'vocab_size': model.config.vocab_size,
             'layer_name': 'gpt_neox.layers',
             'layer_hook_names': [
@@ -104,8 +126,12 @@ def load_gpt_model_and_tokenizer(
 
     else:
         raise NotImplementedError("Model config not yet implemented")
+    
+    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    if not tokenizer.pad_token_id:
+        tokenizer.pad_token_id = tokenizer.eos_token_id
 
-    return model, std_CONFIG
+    return model, tokenizer, std_CONFIG
 
 
 def set_seed(seed: int) -> None:
