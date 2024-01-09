@@ -92,7 +92,9 @@ def get_mean_activations(
     )
 
     # keep only important tokens
-    activations_clean = [activations[i][:, :, important_ids[i], :] for i in range(len(activations))]
+    activations_clean = torch.stack(
+        [activations[i][:, :, important_ids[i], :] for i in range(len(activations))]
+    )
 
     # considering only the first token to evaluate the output
     only_output_tokens = np.array(list(map(lambda x: x.squeeze()[-1].item(), outputs)))
@@ -100,10 +102,16 @@ def get_mean_activations(
 
     correct_idx = (only_output_tokens == only_labels_tokens)
     accuracy = correct_idx.sum() / len(correct_idx)
-    print(f'Model accuracy: {accuracy:.2f}')
-    
-    # using only activations from correct prediction to compute the mean_activations
-    correct_activations = torch.stack(activations_clean[correct_idx])
-    mean_activations = correct_activations.mean(axis = 0)
+    if correct_idx.sum() > 0:
+        print(f'Model accuracy: {accuracy:.2f}, using {correct_idx.sum()} to compute mean activations')
+    else:
+        print(f'Model accuracy is 0, mean_activations cannot be computed')
+        return None
 
+    # using only activations from correct prediction to compute the mean_activations
+    correct_activations = activations_clean[correct_idx]
+    
+    mean_activations = correct_activations.mean(axis = 0)
+    
+    
     return mean_activations

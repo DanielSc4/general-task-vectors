@@ -81,10 +81,27 @@ def load_gpt_model_and_tokenizer(
             ],
         }
 
+    elif 'phi-2' in model_name.lower():
+        std_CONFIG = {
+            'n_heads': model.config.n_head,
+            'n_layers': model.config.n_layer,
+            'd_model': model.config.n_embd,     # residual stream
+            'name': model.config._name_or_path,
+            'vocab_size': model.config.vocab_size,
+            'layer_name': 'transformer.h',
+            'layer_hook_names': [
+                f'transformer.h.{layer}' for layer in range(model.config.n_layer)
+            ],
+            'attn_name': 'mixer.out_proj',
+            'attn_hook_names': [
+                f'model.layers.{layer}.mixer.out_proj' for layer in range(model.config.num_hidden_layers)
+            ],
+        }
+
     else:
         raise NotImplementedError("Model config not yet implemented")
 
-    return model,std_CONFIG
+    return model, std_CONFIG
 
 
 def set_seed(seed: int) -> None:
