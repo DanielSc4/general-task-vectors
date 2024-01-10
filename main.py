@@ -39,7 +39,7 @@ def main(
     model, tokenizer, config, device = load_gpt_model_and_tokenizer(model_name, load_in_8bit)
 
     print(f'{model_name} on {device} device')
-
+    
     # generate prompts
     tok_ret, ids_ret, correct_labels = tokenize_ICL(
         tokenizer, ICL_examples = icl_examples, dataset = dataset,

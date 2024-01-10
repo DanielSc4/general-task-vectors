@@ -58,5 +58,45 @@
     {
         "input": "o",
         "output": "p"
+    },
+    {
+        "input": "p",
+        "output": "q"
+    },
+    {
+        "input": "q",
+        "output": "r"
+    },
+    {
+        "input": "r",
+        "output": "s"
+    },
+    {
+        "input": "s",
+        "output": "t"
+    },
+    {
+        "input": "t",
+        "output": "u"
+    },
+    {
+        "input": "u",
+        "output": "v"
+    },
+    {
+        "input": "v",
+        "output": "w"
+    },
+    {
+        "input": "w",
+        "output": "x"
+    },
+    {
+        "input": "x",
+        "output": "y"
+    },
+    {
+        "input": "y",
+        "output": "z"
     }
 ]
