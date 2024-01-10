@@ -8,3 +8,5 @@ __pycache__
 
 # storage
 output/*
+
+*.DS_Store
