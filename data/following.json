@@ -1,0 +1,62 @@
+[
+    {
+        "input": "a",
+        "output": "b"
+    },
+    {
+        "input": "b",
+        "output": "c"
+    },
+    {
+        "input": "c",
+        "output": "d"
+    },
+    {
+        "input": "d",
+        "output": "e"
+    },
+    {
+        "input": "e",
+        "output": "f"
+    },
+    {
+        "input": "f",
+        "output": "g"
+    },
+    {
+        "input": "g",
+        "output": "h"
+    },
+    {
+        "input": "h",
+        "output": "i"
+    },
+    {
+        "input": "i",
+        "output": "j"
+    },
+    {
+        "input": "j",
+        "output": "k"
+    },
+    {
+        "input": "k",
+        "output": "l"
+    },
+    {
+        "input": "l",
+        "output": "m"
+    },
+    {
+        "input": "m",
+        "output": "n"
+    },
+    {
+        "input": "n",
+        "output": "o"
+    },
+    {
+        "input": "o",
+        "output": "p"
+    }
+]

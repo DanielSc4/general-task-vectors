@@ -18,7 +18,14 @@ def rgetattr(obj, attr, *args):
         return getattr(obj, attr, *args)
     return functools.reduce(_getattr, [obj] + attr.split('.'))
 
-
+def get_device():
+    if torch.cuda.is_available():
+        device = 'cuda'
+    elif torch.backends.mps.is_available():
+        device = 'mps'
+    else:
+        device = 'cpu'
+    return device
 
 
 def load_gpt_model_and_tokenizer(
@@ -26,12 +33,7 @@ def load_gpt_model_and_tokenizer(
         load_in_8bit: bool = False,
 ):
     
-    if torch.cuda.is_available():
-        device = 'cuda'
-    elif torch.backends.mps.is_available():
-        device = 'mps'
-    else:
-        device = 'cpu'
+    device = get_device()
 
     if model_name == 'gpt2':
         model = LanguageModel('gpt2', device_map=device, load_in_8bit=load_in_8bit)
@@ -131,7 +133,7 @@ def load_gpt_model_and_tokenizer(
     if not tokenizer.pad_token_id:
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
-    return model, tokenizer, std_CONFIG
+    return model, tokenizer, std_CONFIG, device
 
 
 def set_seed(seed: int) -> None:

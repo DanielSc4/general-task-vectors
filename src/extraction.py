@@ -31,6 +31,7 @@ def extract_activations(
         model: AutoModelForCausalLM, 
         config: dict[str, any],
         tokenizer: AutoTokenizer,
+        device: str,
     ):
     """Extract the activation and the output produced from the model using the tokenized prompts provided
 
@@ -39,13 +40,15 @@ def extract_activations(
         model (AutoModelForCausalLM): HuggingFace model
         config (dict[str, any]): model's config
         tokenizer (AutoTokenizer): HuggingFace tokenizer
+        device (str): device
 
     Returns:
         tuple[list[torch.Tensor], list[torch.Tensor]]: tuple corresponding to the activations and the model output
     """
     dataset_activations, outputs = [], []
-    for prompt in tqdm(tokenized_prompts, total = len(tokenized_prompts), desc = 'extracting activations'):
-        with model.generate(max_new_tokens=1, pad_token_id=model.tokenizer.eos_token_id) as generator:
+    for prompt in tqdm(tokenized_prompts, total = len(tokenized_prompts), desc = '[x] Extracting activations'):
+        prompt = prompt.to(device)
+        with model.generate(max_new_tokens=1, pad_token_id=tokenizer.pad_token_id) as generator:
             # invoke works in a generation context, where operations on inputs and outputs are tracked
             with generator.invoke(prompt) as invoker:
                 layer_attn_activations = []
@@ -69,6 +72,7 @@ def get_mean_activations(
         model: AutoModelForCausalLM, 
         config: dict[str, any],
         correct_labels: list[str],
+        device: str,
     ):
     """Compute the average of all the model's activation on the provided prompts
 
@@ -79,6 +83,7 @@ def get_mean_activations(
         model (AutoModelForCausalLM): HuggingFace model
         config (dict[str, any]): model's config
         correct_labels (list[str]): list of correct labels for each ICL prompt
+        device (str): device
 
     Returns:
         torch.Tensor: mean of activations (`n_layers, n_heads, seq_len, d_head`)
@@ -89,6 +94,7 @@ def get_mean_activations(
         model=model, 
         config=config,
         tokenizer=tokenizer,
+        device=device,
     )
 
     # keep only important tokens
@@ -103,9 +109,9 @@ def get_mean_activations(
     correct_idx = (only_output_tokens == only_labels_tokens)
     accuracy = correct_idx.sum() / len(correct_idx)
     if correct_idx.sum() > 0:
-        print(f'Model accuracy: {accuracy:.2f}, using {correct_idx.sum()} example to compute mean activations')
+        print(f'[x] Model accuracy: {accuracy:.2f}, using {correct_idx.sum()} (out of {len(correct_idx)}) examples to compute mean activations')
     else:
-        print(f'Model accuracy is 0, mean_activations cannot be computed')
+        print(f'[x] Model accuracy is 0, mean_activations cannot be computed!')
         return None
 
     # using only activations from correct prediction to compute the mean_activations

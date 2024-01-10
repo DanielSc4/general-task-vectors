@@ -40,7 +40,6 @@ def build_prompt_txt(queries: list[str], answers: list[str]):
 
 
 
-
 def tokenize_from_template(tokenizer, promtp_w_template: tuple[tuple[str, str]] = None):
     """tokenize the prompt following the provided template and return a list of indexes referring to the structural toknes
     and only the last token of sentences (automatically include the bos token at the beginning)

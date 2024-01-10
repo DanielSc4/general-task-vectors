@@ -73,7 +73,6 @@ def compute_indirect_effect(
         ICL_examples = ICL_examples, 
         dataset = randomized_dataset
     )
-    print(f'total prompts: {len(all_tokenized_prompt)}')
 
     # probabilities over vocab from the original model
     probs_original = [] # torch.zeros([len(randomized_dataset), config['vocab_size']])
