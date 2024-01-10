@@ -57,7 +57,7 @@ def main(
     )
 
     # store mean_activations
-    torch.save(mean_activations, f'./output/mean_activations_{model_name.replace("/", "-")}.pt')
+    torch.save(mean_activations, f'./output/{dataset_name}_mean_activations_{model_name.replace("/", "-")}.pt')
     
     # compute causal mediation analysis over attention heads
     cie, probs_original, probs_edited  = compute_indirect_effect(
@@ -69,7 +69,7 @@ def main(
         ICL_examples = icl_examples,
         batch_size=batch_size,
     )
-    torch.save(cie, f'./output/cie_{model_name.replace("/", "-")}.pt')
+    torch.save(cie, f'./output/{dataset_name}_cie_{model_name.replace("/", "-")}.pt')
 
 
 if __name__ == "__main__":
