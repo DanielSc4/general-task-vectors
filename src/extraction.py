@@ -51,6 +51,7 @@ def extract_activations(
         with model.generate(max_new_tokens=1, pad_token_id=tokenizer.pad_token_id) as generator:
             # invoke works in a generation context, where operations on inputs and outputs are tracked
             with generator.invoke(prompt) as invoker:
+                print(model)
                 layer_attn_activations = []
                 for layer_name in config['attn_hook_names']:
                     layer_attn_activations.append(rgetattr(model, layer_name).output.save())
