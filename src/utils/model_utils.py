@@ -118,7 +118,7 @@ def load_gpt_model_and_tokenizer(
             'vocab_size': model.config.vocab_size,
             'layer_name': 'transformer.h',
             'layer_hook_names': [
-                f'transformer.h.{layer}' for layer in range(model.config.n_layer)
+                f'transformer.h.{layer}' for layer in range(model.config.num_hidden_layers)
             ],
             'attn_name': 'mixer.out_proj',
             'attn_hook_names': [
