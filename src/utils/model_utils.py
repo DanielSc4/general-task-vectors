@@ -110,6 +110,7 @@ def load_gpt_model_and_tokenizer(
 
     elif 'phi-2' in model_name.lower():
         model = LanguageModel(model_name, device_map=device, trust_remote_code = True, load_in_8bit=load_in_8bit)
+        print(model)
         std_CONFIG = {
             'n_heads': model.config.num_attention_heads,
             'n_layers': model.config.num_hidden_layers,
