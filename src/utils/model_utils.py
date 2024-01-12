@@ -117,13 +117,13 @@ def load_gpt_model_and_tokenizer(
             'd_model': model.config.hidden_size,     # residual stream
             'name': model.config._name_or_path,
             'vocab_size': model.config.vocab_size,
-            'layer_name': 'layers',
+            'layer_name': 'model.model.layer',
             'layer_hook_names': [
-                f'layers.{layer}' for layer in range(model.config.num_hidden_layers)
+                f'model.model.layer.{layer}' for layer in range(model.config.num_hidden_layers)
             ],
             'attn_name': 'self_attn',
             'attn_hook_names': [
-                f'layers.{layer}.self_attn' for layer in range(model.config.num_hidden_layers)
+                f'model.model.layer.{layer}.self_attn' for layer in range(model.config.num_hidden_layers)
             ],
         }
 
