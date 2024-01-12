@@ -46,27 +46,27 @@ def extract_activations(
         tuple[list[torch.Tensor], list[torch.Tensor]]: tuple corresponding to the activations and the model output
     """
     dataset_activations, outputs = [], []
-    with model.generate(max_new_tokens=1, pad_token_id=tokenizer.pad_token_id) as generator:
-        pbar = tqdm(tokenized_prompts, total = len(tokenized_prompts), desc = '[x] Extracting activations')
-        for prompt in pbar:
+    pbar = tqdm(tokenized_prompts, total = len(tokenized_prompts), desc = '[x] Extracting activations')
+    for prompt in pbar:
+        with model.generate(max_new_tokens=1, pad_token_id=tokenizer.pad_token_id) as generator:
             prompt = prompt.to(device)
             # invoke works in a generation context, where operations on inputs and outputs are tracked
             with generator.invoke(prompt) as invoker:
                 layer_attn_activations = []
                 for layer_i in range(len(config['attn_hook_names'])):
-                    pbar.set_description(f"[x] Extracting activations (layer: {layer_i}/{len(config['attn_hook_names'])})")
+                    pbar.set_description(f"[x] Extracting activations (layer: {layer_i:02d}/{len(config['attn_hook_names'])})")
                     layer_attn_activations.append(
                         rgetattr(model, config['attn_hook_names'][layer_i]).output.save()
                     )
-    # get the values from the activations
-    layer_attn_activations = [att.value for att in layer_attn_activations]
+        # get the values from the activations
+        layer_attn_activations = [att.value for att in layer_attn_activations]
 
-    # from hidden state split heads and permute: n_layers, tokens, n_heads, d_head -> n_layers, n_heads, tokens, d_head
-    attn_activations = split_activation(layer_attn_activations, config).permute(0, 2, 1, 3)
-    dataset_activations.append(attn_activations)
+        outputs.append(generator.output)
 
-    # outputs from generations
-    outputs = generator.output
+        # from hidden state split heads and permute: n_layers, tokens, n_heads, d_head -> n_layers, n_heads, tokens, d_head
+        attn_activations = split_activation(layer_attn_activations, config).permute(0, 2, 1, 3)
+        dataset_activations.append(attn_activations)
+    
     return dataset_activations, outputs
 
 
@@ -101,9 +101,8 @@ def get_mean_activations(
         tokenizer=tokenizer,
         device=device,
     )
-    print(len(activations))
 
-    # keep only important tokens
+    # keep only important tokens (activations_clean: [batch, n_layers, n_heads, seq, d_head])
     activations_clean = torch.stack(
         [activations[i][:, :, important_ids[i], :] for i in range(len(activations))]
     )
@@ -121,10 +120,8 @@ def get_mean_activations(
         return None
 
     # using only activations from correct prediction to compute the mean_activations
-    print(activations_clean.shape)
     correct_activations = activations_clean[correct_idx]    
     
     mean_activations = correct_activations.mean(axis = 0)
-    
     
     return mean_activations

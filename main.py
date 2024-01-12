@@ -11,7 +11,7 @@ from src.utils.prompt_helper import tokenize_ICL
 from src.intervention import compute_indirect_effect
 
 def load_json_dataset(json_path):
-    with open(json_path) as file:
+    with open(json_path, encoding='utf-8') as file:
         dataset = json.load(file)
     return dataset
 
