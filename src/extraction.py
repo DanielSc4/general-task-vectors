@@ -58,14 +58,15 @@ def extract_activations(
                     layer_attn_activations.append(
                         rgetattr(model, config['attn_hook_names'][layer_i]).output.save()
                     )
-        outputs.append(generator.output)
+    # get the values from the activations
+    layer_attn_activations = [att.value for att in layer_attn_activations]
 
-        # get the values from the activations
-        layer_attn_activations = [att.value for att in layer_attn_activations]
-        
-        # from hidden state split heads and permute: n_layers, tokens, n_heads, d_head -> n_layers, n_heads, tokens, d_head
-        attn_activations = split_activation(layer_attn_activations, config).permute(0, 2, 1, 3)
-        dataset_activations.append(attn_activations)
+    # from hidden state split heads and permute: n_layers, tokens, n_heads, d_head -> n_layers, n_heads, tokens, d_head
+    attn_activations = split_activation(layer_attn_activations, config).permute(0, 2, 1, 3)
+    dataset_activations.append(attn_activations)
+
+    # outputs from generations
+    outputs = generator.output
     return dataset_activations, outputs
 
 
@@ -100,6 +101,7 @@ def get_mean_activations(
         tokenizer=tokenizer,
         device=device,
     )
+    print(len(activations))
 
     # keep only important tokens
     activations_clean = torch.stack(
@@ -119,7 +121,8 @@ def get_mean_activations(
         return None
 
     # using only activations from correct prediction to compute the mean_activations
-    correct_activations = activations_clean[correct_idx]
+    print(activations_clean.shape)
+    correct_activations = activations_clean[correct_idx]    
     
     mean_activations = correct_activations.mean(axis = 0)
     
