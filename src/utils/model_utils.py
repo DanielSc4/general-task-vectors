@@ -32,11 +32,15 @@ def load_gpt_model_and_tokenizer(
         model_name: str,
         load_in_8bit: bool = False,
 ):
-    
+
     device = get_device()
 
     if model_name == 'gpt2':
-        model = LanguageModel('gpt2', device_map=device, load_in_8bit=load_in_8bit)
+        model = LanguageModel(
+            'gpt2', 
+            device_map=device if not load_in_8bit else {'':0}, 
+            load_in_8bit=load_in_8bit
+        )
         # providing a standard config
         std_CONFIG = {
             'n_heads': model.config.n_head,
@@ -55,7 +59,11 @@ def load_gpt_model_and_tokenizer(
         }
     
     elif 'gpt-neox' in model_name.lower():
-        model = LanguageModel(model_name, device_map=device, load_in_8bit=load_in_8bit)
+        model = LanguageModel(
+            model_name, 
+            device_map=device if not load_in_8bit else {'':0}, 
+            load_in_8bit=load_in_8bit
+        )
         std_CONFIG = {
             'n_heads': model.config.num_attention_heads,
             'n_layers': model.config.num_hidden_layers,
@@ -73,7 +81,11 @@ def load_gpt_model_and_tokenizer(
         }
 
     elif 'pythia' in model_name.lower():
-        model = LanguageModel(model_name, device_map=device, load_in_8bit=load_in_8bit)
+        model = LanguageModel(
+            model_name, 
+            device_map=device if not load_in_8bit else {'':0}, 
+            load_in_8bit=load_in_8bit
+        )
         std_CONFIG = {
             'n_heads': model.config.num_attention_heads,
             'n_layers': model.config.num_hidden_layers,
@@ -91,7 +103,11 @@ def load_gpt_model_and_tokenizer(
         }
 
     elif 'llama' in model_name.lower():
-        model = LanguageModel(model_name, device_map=device, load_in_8bit=load_in_8bit)
+        model = LanguageModel(
+            model_name, 
+            device_map=device if not load_in_8bit else {'':0},
+            load_in_8bit=load_in_8bit
+        )
         std_CONFIG = {
             'n_heads': model.config.num_attention_heads,
             'n_layers': model.config.num_hidden_layers,
@@ -109,8 +125,12 @@ def load_gpt_model_and_tokenizer(
         }
 
     elif 'phi-2' in model_name.lower():
-        model = LanguageModel(model_name, device_map=device, trust_remote_code = True, load_in_8bit=load_in_8bit)
-        print(model)
+        model = LanguageModel(
+            model_name, 
+            device_map=device if not load_in_8bit else {'':0}, 
+            trust_remote_code = True, 
+            load_in_8bit=load_in_8bit
+        )
         std_CONFIG = {
             'n_heads': model.config.num_attention_heads,
             'n_layers': model.config.num_hidden_layers,

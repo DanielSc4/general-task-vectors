@@ -46,14 +46,18 @@ def extract_activations(
         tuple[list[torch.Tensor], list[torch.Tensor]]: tuple corresponding to the activations and the model output
     """
     dataset_activations, outputs = [], []
-    for prompt in tqdm(tokenized_prompts, total = len(tokenized_prompts), desc = '[x] Extracting activations'):
-        prompt = prompt.to(device)
-        with model.generate(max_new_tokens=1, pad_token_id=tokenizer.pad_token_id) as generator:
+    with model.generate(max_new_tokens=1, pad_token_id=tokenizer.pad_token_id) as generator:
+        pbar = tqdm(tokenized_prompts, total = len(tokenized_prompts), desc = '[x] Extracting activations')
+        for prompt in pbar:
+            prompt = prompt.to(device)
             # invoke works in a generation context, where operations on inputs and outputs are tracked
             with generator.invoke(prompt) as invoker:
                 layer_attn_activations = []
-                for layer_name in config['attn_hook_names']:
-                    layer_attn_activations.append(rgetattr(model, layer_name).output.save())
+                for layer_i in range(len(config['attn_hook_names'])):
+                    pbar.set_description(f"[x] Extracting activations (layer: {layer_i}/{len(config['attn_hook_names'])})")
+                    layer_attn_activations.append(
+                        rgetattr(model, config['attn_hook_names'][layer_i]).output.save()
+                    )
         outputs.append(generator.output)
 
         # get the values from the activations
