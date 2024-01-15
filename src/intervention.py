@@ -133,7 +133,7 @@ def compute_indirect_effect(
     # considering only the first id
     correct_ids = list(map(lambda x: x[0], tokenizer(all_correct_labels)['input_ids']))
 
-    cie = torch.zeros([len(correct_ids), 12, 12])
+    cie = torch.zeros([len(correct_ids), config['n_layers'], config['n_heads']])
 
     for prompt_idx in range(len(correct_ids)):
         for layer in range(config['n_layers']):
