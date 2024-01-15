@@ -129,7 +129,7 @@ def compute_indirect_effect(
     # CIE(ij) = probability of correct_label token y (w/ edited model) - probability of correct_label token y (w/ original model)
     #      e.g. CIE(ij) = 0.9 - 0.1 = 0.8      head has great effect
     #      e.g. CIE(ij) = 0.3 - 0.1 = 0.2      head does not influence too much the output
-    
+
     # considering only the first id
     correct_ids = list(map(lambda x: x[0], tokenizer(all_correct_labels)['input_ids']))
 
@@ -145,5 +145,6 @@ def compute_indirect_effect(
                     prompt_idx, correct_ids[prompt_idx]
                 ].item()
                 cie[prompt_idx, layer, head] = prob_correct_token_edited_model - prob_correct_token_original_model
+    
     
     return cie, probs_original, probs_edited
