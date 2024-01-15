@@ -18,4 +18,4 @@ pip install -r requirements.txt
 echo "Python version: $(python --version)"
 nvidia-smi
 
-python -m main --model_name microsoft/phi-2 --dataset_name antonym --icl_examples 4 --batchsize 32
+python -m main --model_name microsoft/phi-2 --dataset_name antonym --icl_examples 4 --batch_size 32
