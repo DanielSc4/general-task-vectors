@@ -43,7 +43,7 @@ mpmath==1.3.0
 nbformat==5.9.2
 nest-asyncio==1.5.8
 networkx==3.2.1
-nnsight @ git+https://github.com/JadenFiotto-Kaufman/nnsight@cab401e14545e1a24c2671132404ee3a7ac60456
+nnsight
 numpy==1.26.2
 packaging==23.2
 pandas==2.1.4
