@@ -121,7 +121,7 @@ def get_mean_activations(
         print(f'[x] Model accuracy: {accuracy:.2f}, using {correct_idx.sum()} (out of {len(correct_idx)}) examples to compute mean activations')
     else:
         print(f'[x] Model accuracy is 0, mean_activations cannot be computed!')
-        return None
+        raise ValueError("Activations cannot be computed when model accuracy is 0%")
 
     # using only activations from correct prediction to compute the mean_activations
     correct_activations = activations_clean[correct_idx]    
