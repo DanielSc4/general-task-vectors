@@ -61,6 +61,10 @@ def extract_activations(
         # get the values from the activations
         layer_attn_activations = [att.value for att in layer_attn_activations]
 
+        if not isinstance(layer_attn_activations[0], torch.Tensor):
+            # take the first element (should be the hidden tensor according to tests)
+            layer_attn_activations = [att[0] for att in layer_attn_activations]
+
         outputs.append(generator.output)
 
         # from hidden state split heads and permute: n_layers, tokens, n_heads, d_head -> n_layers, n_heads, tokens, d_head

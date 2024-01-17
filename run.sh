@@ -19,3 +19,6 @@ echo "Python version: $(python --version)"
 nvidia-smi
 
 python -m main --model_name microsoft/phi-2 --dataset_name antonym --icl_examples 4 --batch_size 32
+
+# python -m main --model_name TinyLlama/TinyLlama-1.1B-Chat-v1.0 --dataset_name antonym --icl_examples 4 --batch_size 32
+

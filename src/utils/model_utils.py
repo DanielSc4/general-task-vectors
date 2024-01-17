@@ -130,6 +130,7 @@ def load_gpt_model_and_tokenizer(
             device_map=device if not load_in_8bit else {'':0}, 
             trust_remote_code = True, 
             load_in_8bit=load_in_8bit,
+            torch_dtype=torch.bfloat16 if not load_in_8bit else torch.float32,
         )
         std_CONFIG = {
             'n_heads': model.config.num_attention_heads,
