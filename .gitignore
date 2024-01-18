@@ -6,8 +6,6 @@
 __pycache__
 *__pycache__
 
-# storage
-output/*
 
 *.DS_Store
 nohup*
