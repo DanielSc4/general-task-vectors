@@ -30,9 +30,13 @@ def replace_heads_w_avg(tokenized_prompt: torch.tensor, important_ids: list[int]
         for idx, (num_layer, num_head) in enumerate(layers_heads):
             # select the head (output shape is torch.Size([batch, seq_len, d_model]))
             # substitute only the important indexes (unsqueeze for adding the batch dimension) TODO: check correctness for important ids
-            rgetattr(model, config['attn_hook_names'][num_layer]).output[
+            
+            # https://github.com/huggingface/transformers/blob/224ab70969d1ac6c549f0beb3a8a71e2222e50f7/src/transformers/models/gpt2/modeling_gpt2.py#L341
+            # shape: tuple[output from the attention module (hidden state), present values (cache), attn_weights] 
+            # (taking 0-th value)
+            rgetattr(model, config['attn_hook_names'][num_layer]).output[0][
                 :, :, (num_head * d_head) : ((num_head + 1) * d_head)
-            ][:, important_ids, :] = avg_activations[idx].unsqueeze(0)          
+            ][:, important_ids, :] = avg_activations[idx].unsqueeze(0)
             
     # store the output probabilities
     probs = invoker.output.logits[:,-1,:].softmax(dim=-1)
@@ -101,7 +105,7 @@ def compute_indirect_effect(
         logits = invoker.output.logits
         logits = logits[:,-1,:] # select only the predicted token (i.e. the final token, keeping batch and vocab_size)
         # store the probabilities for each token in vocab
-        probs_original.append(logits.softmax(dim=-1))
+        probs_original.append(logits.softmax(dim=-1).cpu())
 
         # for each layer i, for each head j in the model save the vocab size in output
         edited = torch.zeros([current_batch_size, config['n_layers'], config['n_heads'], config['vocab_size']])
@@ -121,7 +125,7 @@ def compute_indirect_effect(
                     config=config,
                 )
                 edited[:, layer_i, head_j, :] = returned
-        probs_edited.append(edited)
+        probs_edited.append(edited.cpu())
 
     probs_original = torch.vstack(probs_original)
     probs_edited = torch.vstack(probs_edited)

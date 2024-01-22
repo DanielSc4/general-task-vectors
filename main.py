@@ -2,6 +2,7 @@ import fire
 import torch
 from pathlib import Path
 import json
+import os
 
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -45,19 +46,25 @@ def main(
         tokenizer, ICL_examples = icl_examples, dataset = dataset,
     )
 
-    # get mean activations from the model
-    mean_activations = get_mean_activations(
-        tokenized_prompts=tok_ret,
-        important_ids=ids_ret,
-        tokenizer=tokenizer,
-        model=model,
-        config=config,
-        correct_labels=correct_labels,
-        device=device,
-    )
+    # get mean activations from the model (or stored ones if already exist)
+    path_to_mean_activations = f'./output/{dataset_name}_mean_activations_{model_name.replace("/", "-")}.pt'
 
-    # store mean_activations
-    torch.save(mean_activations, f'./output/{dataset_name}_mean_activations_{model_name.replace("/", "-")}.pt')
+    if os.path.isfile(path_to_mean_activations):
+        print(f'[x] Found mean_activations at: {path_to_mean_activations}')
+        mean_activations = torch.load(path_to_mean_activations)
+        mean_activations = mean_activations.to(device)
+    else:
+        mean_activations = get_mean_activations(
+            tokenized_prompts=tok_ret,
+            important_ids=ids_ret,
+            tokenizer=tokenizer,
+            model=model,
+            config=config,
+            correct_labels=correct_labels,
+            device=device,
+        )
+        # store mean_activations
+        torch.save(mean_activations, path_to_mean_activations)
     
     # compute causal mediation analysis over attention heads
     cie, probs_original, probs_edited  = compute_indirect_effect(

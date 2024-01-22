@@ -52,9 +52,9 @@ def load_gpt_model_and_tokenizer(
             'layer_hook_names': [
                 f'transformer.h.{layer}' for layer in range(model.config.n_layer)
             ],
-            'attn_name': 'attn.c_proj',
+            'attn_name': 'attn',
             'attn_hook_names': [
-                f'transformer.h.{layer}.attn.c_proj' for layer in range(model.config.n_layer)
+                f'transformer.h.{layer}.attn' for layer in range(model.config.n_layer)
             ],
         }
     
@@ -74,9 +74,9 @@ def load_gpt_model_and_tokenizer(
             'layer_hook_names': [
                 f'gpt_neox.layers.{layer}' for layer in range(model.config.num_hidden_layers)
             ],
-            'attn_name': 'attention.dense',
+            'attn_name': 'attention',
             'attn_hook_names': [
-                f'gpt_neox.layers.{layer}.attention.dense' for layer in range(model.config.num_hidden_layers)
+                f'gpt_neox.layers.{layer}.attention' for layer in range(model.config.num_hidden_layers)
             ],
         }
 
@@ -96,9 +96,9 @@ def load_gpt_model_and_tokenizer(
             'layer_hook_names': [
                 f'gpt_neox.layers.{layer}' for layer in range(model.config.num_hidden_layers)
             ],
-            'attn_name': 'attention.dense',
+            'attn_name': 'attention',
             'attn_hook_names': [
-                f'gpt_neox.layers.{layer}.attention.dense' for layer in range(model.config.num_hidden_layers)
+                f'gpt_neox.layers.{layer}.attention' for layer in range(model.config.num_hidden_layers)
             ],
         }
 

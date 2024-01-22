@@ -62,7 +62,8 @@ def extract_activations(
         layer_attn_activations = [att.value for att in layer_attn_activations]
 
         if not isinstance(layer_attn_activations[0], torch.Tensor):
-            # take the first element (should be the hidden tensor according to tests)
+            # take the first element (should be the hidden tensor according to 
+            # https://github.com/huggingface/transformers/blob/224ab70969d1ac6c549f0beb3a8a71e2222e50f7/src/transformers/models/gpt2/modeling_gpt2.py#L341)
             layer_attn_activations = [att[0] for att in layer_attn_activations]
 
         outputs.append(generator.output)
@@ -106,6 +107,10 @@ def get_mean_activations(
         device=device,
     )
 
+    # move tensors to CPU for memory issues
+    for idx in range(len(activations)):
+        activations[idx] = activations[idx].cpu()
+
     # keep only important tokens (activations_clean: [batch, n_layers, n_heads, seq, d_head])
     activations_clean = torch.stack(
         [activations[i][:, :, important_ids[i], :] for i in range(len(activations))]
@@ -124,8 +129,9 @@ def get_mean_activations(
         raise ValueError("Activations cannot be computed when model accuracy is 0%")
 
     # using only activations from correct prediction to compute the mean_activations
-    correct_activations = activations_clean[correct_idx]    
+    correct_activations = activations_clean[correct_idx]
     
     mean_activations = correct_activations.mean(axis = 0)
+    mean_activations = mean_activations.to(device)
     
     return mean_activations
