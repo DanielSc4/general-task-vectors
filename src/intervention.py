@@ -134,7 +134,7 @@ def compute_indirect_effect(
     #      e.g. CIE(ij) = 0.9 - 0.1 = 0.8      head has great effect
     #      e.g. CIE(ij) = 0.3 - 0.1 = 0.2      head does not influence too much the output
 
-    # considering only the first id
+    # considering only the first generated id
     correct_ids = list(map(lambda x: x[0], tokenizer(all_correct_labels)['input_ids']))
 
     cie = torch.zeros([len(correct_ids), config['n_layers'], config['n_heads']])

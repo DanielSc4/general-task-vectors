@@ -99,3 +99,4 @@ wsproto==1.2.0
 yarg==0.1.9
 zipp==3.17.0
 bitsandbytes
+tiktoken
