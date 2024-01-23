@@ -118,9 +118,9 @@ def load_gpt_model_and_tokenizer(
             'layer_hook_names': [
                 f'model.layers.{layer}' for layer in range(model.config.num_hidden_layers)
             ],
-            'attn_name': 'self_attn.o_proj',
+            'attn_name': 'self_attn',
             'attn_hook_names': [
-                f'model.layers.{layer}.self_attn.o_proj' for layer in range(model.config.num_hidden_layers)
+                f'model.layers.{layer}.self_attn' for layer in range(model.config.num_hidden_layers)
             ],
         }
 
