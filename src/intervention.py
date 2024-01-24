@@ -7,12 +7,20 @@ from src.utils.model_utils import rgetattr
 from src.utils.prompt_helper import tokenize_ICL, randomize_dataset, pad_input_and_ids
 
 
-def replace_heads_w_avg(tokenized_prompt: torch.tensor, important_ids: list[int], layers_heads: list[tuple[int, int]], avg_activations: list[torch.tensor], model, config):
-    """Replace the activation of specific heads (listed in layers_heads) with the avg_activation for each specific head (listed in avg_activations). 
-    Than compute the output of the model with all the new activations
+def replace_heads_w_avg(
+        tokenized_prompt: torch.tensor, 
+        important_ids: list[int], 
+        layers_heads: list[tuple[int, int]], 
+        avg_activations: list[torch.tensor], 
+        model, 
+        config,
+    ):
+    """Replace the activation of specific head(s) (listed in `layers_heads`) with the avg_activation for each 
+    specific head (listed in `avg_activations`) only in `important_ids` positions. 
+    Than compute the output (softmaxed logits) of the model with all the new activations.
 
     Args:
-        tokenized_prompt (torch.tensor): tokenized prompt (single batch)
+        tokenized_prompt (torch.tensor): tokenized prompt
         important_ids (list[int]): list of important indexes i.e. the tokens where the average must be substituted
         layers_heads (list[tuple[int, int]]): list of tuples each containing a layer index, head index
         avg_activations (list[torch.tensor]): list of activations (`size: (seq_len, d_head)`) for each head listed in layers_heads. The length must be the same of layers_heads
@@ -45,8 +53,12 @@ def replace_heads_w_avg(tokenized_prompt: torch.tensor, important_ids: list[int]
             print(important_ids)
             print()
 
-            # substitute only the important indexes (unsqueeze for adding the batch dimension) TODO: check correctness for important ids
-            attention_head_values[:, important_ids, :] = avg_activations[idx].unsqueeze(0)
+            # for each prompt in batch and important ids of that prompt
+            # substitute with the mean activation (unsqueeze for adding the batch dimension)
+            for prompt_idx, prompt_imp_ids in zip(
+                range(attention_head_values.shape[0]), important_ids,
+            ):
+                attention_head_values[prompt_idx][prompt_imp_ids] = avg_activations[idx].unsqueeze(0)
             
     # store the output probabilities
     probs = invoker.output.logits[:,-1,:].softmax(dim=-1)
