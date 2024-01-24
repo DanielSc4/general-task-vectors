@@ -34,9 +34,10 @@ def replace_heads_w_avg(tokenized_prompt: torch.tensor, important_ids: list[int]
             # https://github.com/huggingface/transformers/blob/224ab70969d1ac6c549f0beb3a8a71e2222e50f7/src/transformers/models/gpt2/modeling_gpt2.py#L341
             # shape: tuple[output from the attention module (hidden state), present values (cache), attn_weights] 
             # (taking 0-th value)
-            rgetattr(model, config['attn_hook_names'][num_layer]).output[0][
+            attention_head_values = rgetattr(model, config['attn_hook_names'][num_layer]).output[0][
                 :, :, (num_head * d_head) : ((num_head + 1) * d_head)
-            ][:, important_ids, :] = avg_activations[idx].unsqueeze(0)
+            ]
+            attention_head_values[:, important_ids, :] = avg_activations[idx].unsqueeze(0)
             
     # store the output probabilities
     probs = invoker.output.logits[:,-1,:].softmax(dim=-1)
@@ -96,7 +97,7 @@ def compute_indirect_effect(
             pad_token_id = tokenizer.eos_token_id
         )
         current_batch_important_ids = all_important_ids[start_index : end_index]
-        
+
         pbar.set_description('Processing original model')
         
         # take the original result from the model (probability of correct response token y)

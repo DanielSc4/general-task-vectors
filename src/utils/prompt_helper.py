@@ -157,11 +157,16 @@ def pad_input(tokenized_prompts, max_len = 256, pad_token_id = 50256):
 
     # Process each tokenized prompt individually
     for tokenized_prompt in tokenized_prompts:
-        padded_prompt = torch.nn.functional.pad(tokenized_prompt, pad=(0, max_len - len(tokenized_prompt)), value=pad_token_id)
+        padded_prompt = torch.nn.functional.pad(
+            tokenized_prompt,
+            pad=(max_len - len(tokenized_prompt), 0),
+            value=pad_token_id,
+        )
         padded_prompts.append(padded_prompt)
+        print(padded_prompt.shape)
 
-        attention_mask = torch.ones(max_len, dtype=torch.long)
-        attention_mask[len(tokenized_prompt):] = 0
+        attention_mask = torch.zeros(max_len, dtype=torch.long)
+        attention_mask[- len(tokenized_prompt):] = 1
         attention_masks.append(attention_mask)
     
     padded_prompts_tensor = torch.vstack(padded_prompts)
