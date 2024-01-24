@@ -41,17 +41,9 @@ def replace_heads_w_avg(
             # https://github.com/huggingface/transformers/blob/224ab70969d1ac6c549f0beb3a8a71e2222e50f7/src/transformers/models/gpt2/modeling_gpt2.py#L341
             # shape: tuple[output from the attention module (hidden state), present values (cache), attn_weights] 
             # (taking 0-th value)
-            raw = rgetattr(model, config['attn_hook_names'][num_layer]).output[0]
-            print(f'raw shape: {raw.shape}. b, seq, d_model')
             attention_head_values = rgetattr(model, config['attn_hook_names'][num_layer]).output[0][
                 :, :, (num_head * d_head) : ((num_head + 1) * d_head)
             ]
-
-            print(f'Single attention head has shape: {attention_head_values.shape}. b, seq, d_head')
-            print(f'Avg activations has shape: {avg_activations[idx].unsqueeze(0).shape}. :b:, seq, d_head')
-            print(f'Important_ids[0] len: {len(important_ids[0])}')
-            print(important_ids)
-            print()
 
             # for each prompt in batch and important ids of that prompt
             # substitute with the mean activation (unsqueeze for adding the batch dimension)
