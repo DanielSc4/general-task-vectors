@@ -141,11 +141,12 @@ def randomize_dataset(dataset):
 
 
 
-def pad_input(tokenized_prompts, max_len = 256, pad_token_id = 50256):
+def pad_input_and_ids(tokenized_prompts, important_ids: list[int], max_len = 256, pad_token_id = 50256):
     """pad a batched input 
 
     Args:
         tokenized_prompts (list[torch.Tensor]): list of tokenized sentences
+        important_ids (list[int]). Important ids to be shifted according to the pad length
         max_len (int, optional): max len to pad. Defaults to 256.
         pad_token_id (int, optional): as name. Defaults to tokenizer.eos_token_id.
 
@@ -154,9 +155,10 @@ def pad_input(tokenized_prompts, max_len = 256, pad_token_id = 50256):
     """
     padded_prompts = []
     attention_masks = []
+    adapted_ids = []
 
     # Process each tokenized prompt individually
-    for tokenized_prompt in tokenized_prompts:
+    for tokenized_prompt, imp_ids in zip(tokenized_prompts, important_ids):
         padded_prompt = torch.nn.functional.pad(
             tokenized_prompt,
             pad=(max_len - len(tokenized_prompt), 0),
@@ -167,12 +169,16 @@ def pad_input(tokenized_prompts, max_len = 256, pad_token_id = 50256):
         attention_mask = torch.zeros(max_len, dtype=torch.long)
         attention_mask[- len(tokenized_prompt):] = 1
         attention_masks.append(attention_mask)
-    
+
+        adapted_ids.append(
+            [ele + sum(attention_mask == 0).item() for ele in imp_ids]
+        )
+        
     padded_prompts_tensor = torch.vstack(padded_prompts)
     attention_masks_tensor = torch.vstack(attention_masks)
 
     return {
         "input_ids": padded_prompts_tensor,
         "attention_mask": attention_masks_tensor,
-    }
+    }, adapted_ids
 

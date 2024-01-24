@@ -4,7 +4,7 @@ from tqdm import tqdm
 import numpy as np
 
 from src.utils.model_utils import rgetattr
-from src.utils.prompt_helper import tokenize_ICL, randomize_dataset, pad_input
+from src.utils.prompt_helper import tokenize_ICL, randomize_dataset, pad_input_and_ids
 
 
 def replace_heads_w_avg(tokenized_prompt: torch.tensor, important_ids: list[int], layers_heads: list[tuple[int, int]], avg_activations: list[torch.tensor], model, config):
@@ -38,7 +38,7 @@ def replace_heads_w_avg(tokenized_prompt: torch.tensor, important_ids: list[int]
             attention_head_values = rgetattr(model, config['attn_hook_names'][num_layer]).output[0][
                 :, :, (num_head * d_head) : ((num_head + 1) * d_head)
             ]
-            
+
             print(f'Single attention head has shape: {attention_head_values.shape}. b, seq, d_head')
             print(f'Avg activations has shape: {avg_activations[idx].unsqueeze(0).shape}. :b:, seq, d_head')
             print(f'Important_ids[0] len: {len(important_ids[0])}')
@@ -100,12 +100,12 @@ def compute_indirect_effect(
         end_index = min(start_index + batch_size, len(all_tokenized_prompt))
         current_batch_size = end_index - start_index
 
-        current_batch_tokens = pad_input(
+        current_batch_tokens, current_batch_important_ids = pad_input_and_ids(
             tokenized_prompts = all_tokenized_prompt[start_index : end_index], 
+            important_ids = all_important_ids[start_index : end_index],
             max_len = 256,
-            pad_token_id = tokenizer.eos_token_id
+            pad_token_id = tokenizer.eos_token_id,
         )
-        current_batch_important_ids = all_important_ids[start_index : end_index]
 
         pbar.set_description('Processing original model')
         
