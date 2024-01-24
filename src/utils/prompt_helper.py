@@ -163,7 +163,6 @@ def pad_input(tokenized_prompts, max_len = 256, pad_token_id = 50256):
             value=pad_token_id,
         )
         padded_prompts.append(padded_prompt)
-        print(padded_prompt.shape)
 
         attention_mask = torch.zeros(max_len, dtype=torch.long)
         attention_mask[- len(tokenized_prompt):] = 1

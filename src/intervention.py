@@ -29,14 +29,23 @@ def replace_heads_w_avg(tokenized_prompt: torch.tensor, important_ids: list[int]
     with model.invoke(tokenized_prompt) as invoker:
         for idx, (num_layer, num_head) in enumerate(layers_heads):
             # select the head (output shape is torch.Size([batch, seq_len, d_model]))
-            # substitute only the important indexes (unsqueeze for adding the batch dimension) TODO: check correctness for important ids
             
             # https://github.com/huggingface/transformers/blob/224ab70969d1ac6c549f0beb3a8a71e2222e50f7/src/transformers/models/gpt2/modeling_gpt2.py#L341
             # shape: tuple[output from the attention module (hidden state), present values (cache), attn_weights] 
             # (taking 0-th value)
+            raw = rgetattr(model, config['attn_hook_names'][num_layer]).output[0]
+            print(f'raw shape: {raw.shape}. b, seq, d_model')
             attention_head_values = rgetattr(model, config['attn_hook_names'][num_layer]).output[0][
                 :, :, (num_head * d_head) : ((num_head + 1) * d_head)
             ]
+            
+            print(f'Single attention head has shape: {attention_head_values.shape}. b, seq, d_head')
+            print(f'Avg activations has shape: {avg_activations[idx].unsqueeze(0).shape}. :b:, seq, d_head')
+            print(f'Important_ids[0] len: {len(important_ids[0])}')
+            print(important_ids)
+            print()
+
+            # substitute only the important indexes (unsqueeze for adding the batch dimension) TODO: check correctness for important ids
             attention_head_values[:, important_ids, :] = avg_activations[idx].unsqueeze(0)
             
     # store the output probabilities

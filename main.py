@@ -47,7 +47,7 @@ def main(
     )
 
     # get mean activations from the model (or stored ones if already exist)
-    path_to_mean_activations = f'./output/{dataset_name}_mean_activations_{model_name.replace("/", "-")}.pt'
+    path_to_mean_activations = f'./output/{dataset_name}_mean_activations_{model_name.replace("/", "-")}_ICL{icl_examples}.pt'
 
     if os.path.isfile(path_to_mean_activations):
         print(f'[x] Found mean_activations at: {path_to_mean_activations}')
@@ -76,7 +76,7 @@ def main(
         ICL_examples = icl_examples,
         batch_size=batch_size,
     )
-    torch.save(cie, f'./output/{dataset_name}_cie_{model_name.replace("/", "-")}.pt')
+    torch.save(cie, f'./output/{dataset_name}_cie_{model_name.replace("/", "-")}_ICL{icl_examples}.pt')
 
 
 if __name__ == "__main__":
