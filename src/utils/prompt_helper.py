@@ -182,3 +182,21 @@ def pad_input_and_ids(tokenized_prompts, important_ids: list[int], max_len = 256
         "attention_mask": attention_masks_tensor,
     }, adapted_ids
 
+def filter_activations(activation, important_ids):
+    """
+    Average activations of multi-token words across all its tokens
+    """
+    def find_missing_ranges(lst):
+        """
+        Given a list of important_ids (e.g. [0, 3, 4, 5, 6, 8]) find the missing ranges
+        to average on ([1, 3], [7, 8])
+        """
+        ranges = [(start, end) for start, end in zip(lst, lst[1:]) if start + 1 < end]
+        return [[start + 1, end] for start, end in ranges]
+    
+    to_avg = find_missing_ranges(important_ids)
+    for i, j in to_avg:
+        activation[:, :, j] = activation[:, :, i : j + 1].mean(axis = 2)
+
+    activation = activation[:, :, important_ids]
+    return activation

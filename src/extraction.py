@@ -4,6 +4,7 @@ from transformers import AutoModelForCausalLM
 from tqdm import tqdm
 
 from .utils.model_utils import rsetattr, rgetattr
+from .utils.prompt_helper import filter_activations
 from transformers import AutoTokenizer
 
 def split_activation(activations, config):
@@ -111,9 +112,9 @@ def get_mean_activations(
     for idx in range(len(activations)):
         activations[idx] = activations[idx].cpu()
 
-    # keep only important tokens (activations_clean: [batch, n_layers, n_heads, seq, d_head])
+    # keep only important tokens averaging the rest (activations_clean: [batch, n_layers, n_heads, seq, d_head])    
     activations_clean = torch.stack(
-        [activations[i][:, :, important_ids[i], :] for i in range(len(activations))]
+        [filter_activations(activations[i], important_ids) for i in range(len(activations))]
     )
 
     # considering only the first token to evaluate the output

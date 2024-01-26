@@ -50,6 +50,7 @@ def replace_heads_w_avg(
             for prompt_idx, prompt_imp_ids in zip(
                 range(attention_head_values.shape[0]), important_ids,
             ):
+                # TODO: la matrice qui deve avere la forma originale, non sostituire solo gli important_ids!
                 attention_head_values[prompt_idx][prompt_imp_ids] = avg_activations[idx].unsqueeze(0)
             
     # store the output probabilities

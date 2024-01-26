@@ -78,6 +78,7 @@ def main(
     )
     torch.save(cie, f'./output/{dataset_name}_cie_{model_name.replace("/", "-")}_ICL{icl_examples}.pt')
 
+    print('[x] Done')
 
 if __name__ == "__main__":
     fire.Fire(main)
