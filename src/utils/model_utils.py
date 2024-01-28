@@ -127,16 +127,22 @@ def load_gpt_model_and_tokenizer(
     elif 'phi-2' or 'zephyr' in model_name.lower():
         if 'stablelm-2-zephyr' in model_name.lower():
             # tmp fix, trust_remote_code must be in config and tokenizer loader as well
-            mm = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True)
-            tok = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-            conf = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
+            # mm = AutoModelForCausalLM.from_pretrained(
+            #     model_name, 
+            #     device_map=device if not load_in_8bit else {'':0}, 
+            #     trust_remote_code=True,
+            #     load_in_8bit=load_in_8bit
+            # )
+            # tok = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+            # conf = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
             model = LanguageModel(
-                mm,
-                tokenizer=tok,
-                config = conf,
+                model_name,
+                device_map=device if not load_in_8bit else {'':0}, 
+                # tokenizer=tok,
                 load_in_8bit=load_in_8bit,
+                # config = conf,
             )
-            model.config = conf # needed, idk why
+            # model.config = conf # needed, idk why
             print('[x] Loading model manually to fix trust_remote_code issue when loading')
         else:
             model = LanguageModel(

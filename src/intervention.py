@@ -150,9 +150,21 @@ def compute_indirect_effect(
         # for each layer i, for each head j in the model save the vocab size in output
         edited = torch.zeros([current_batch_size, config['n_layers'], config['n_heads'], config['vocab_size']])
 
-        for layer_i in range(config['n_layers']):
-            for head_j in range(config['n_heads']):
+        inner_bar_layers = tqdm(
+           range(config['n_layers']),
+           total=config['n_layers'],
+           leave=False,
+           desc=' -th layer'
+        )
+        inner_bar_heads = tqdm(
+           range(config['n_heads']),
+           total=config['n_heads'],
+           leave=False,
+           desc=' -th head'
+        )
 
+        for layer_i in inner_bar_layers:
+            for head_j in inner_bar_heads:
                 pbar.set_description(
                     f'Processing edited model (l: {layer_i}/{config["n_layers"]}, h: {head_j}/{config["n_heads"]})'
                 )
