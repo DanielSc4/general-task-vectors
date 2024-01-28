@@ -4,8 +4,22 @@ from transformers import AutoModelForCausalLM
 from tqdm import tqdm
 
 from .utils.model_utils import rsetattr, rgetattr
-from .utils.prompt_helper import filter_activations
+from .utils.prompt_helper import find_missing_ranges
 from transformers import AutoTokenizer
+
+
+
+def filter_activations(activation, important_ids):
+    """
+    Average activations of multi-token words across all its tokens
+    """
+    to_avg = find_missing_ranges(important_ids)
+    for i, j in to_avg:
+        activation[:, :, j] = activation[:, :, i : j + 1].mean(axis = 2)
+
+    activation = activation[:, :, important_ids]
+    return activation
+
 
 def split_activation(activations, config):
     """split the residual stream (d_model) into n_heads activations for each layer
@@ -112,9 +126,9 @@ def get_mean_activations(
     for idx in range(len(activations)):
         activations[idx] = activations[idx].cpu()
 
-    # keep only important tokens averaging the rest (activations_clean: [batch, n_layers, n_heads, seq, d_head])    
+    # keep only important tokens averaging the rest (activations_clean: [batch, n_layers, n_heads, seq, d_head])
     activations_clean = torch.stack(
-        [filter_activations(activations[i], important_ids) for i in range(len(activations))]
+        [filter_activations(activations[i], important_ids[i]) for i in range(len(activations))]
     )
 
     # considering only the first token to evaluate the output

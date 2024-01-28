@@ -4,7 +4,20 @@ from tqdm import tqdm
 import numpy as np
 
 from src.utils.model_utils import rgetattr
-from src.utils.prompt_helper import tokenize_ICL, randomize_dataset, pad_input_and_ids
+from src.utils.prompt_helper import tokenize_ICL, randomize_dataset, pad_input_and_ids, find_missing_ranges
+
+
+
+def filter_activations(activation, important_ids):
+    """
+    Average activations of multi-token words across all its tokens
+    """   
+    to_avg = find_missing_ranges(important_ids)
+    for i, j in to_avg:
+        activation[:, :, j] = activation[:, :, i : j + 1].mean(axis = 2)
+
+    activation = activation[:, :, important_ids]
+    return activation
 
 
 def replace_heads_w_avg(
@@ -44,14 +57,26 @@ def replace_heads_w_avg(
             attention_head_values = rgetattr(model, config['attn_hook_names'][num_layer]).output[0][
                 :, :, (num_head * d_head) : ((num_head + 1) * d_head)
             ]
-
             # for each prompt in batch and important ids of that prompt
             # substitute with the mean activation (unsqueeze for adding the batch dimension)
-            for prompt_idx, prompt_imp_ids in zip(
-                range(attention_head_values.shape[0]), important_ids,
-            ):
-                # TODO: la matrice qui deve avere la forma originale, non sostituire solo gli important_ids!
+            pbar_inner = tqdm(
+                zip(range(attention_head_values.shape[0]), important_ids),
+                leave=False,
+                desc=f'Replacing -th batch element',
+                total=attention_head_values.shape[0],
+            )
+            for prompt_idx, prompt_imp_ids in pbar_inner:
+                # replace important ids with the mean activations
                 attention_head_values[prompt_idx][prompt_imp_ids] = avg_activations[idx].unsqueeze(0)
+                to_avg = find_missing_ranges(prompt_imp_ids)
+                # replace non important ids (i.e. other tokens of the same word) with the same values (avg of the token activation)
+                for n_interval in range(len(to_avg)):
+                    # calculate range where the substitution must take place (e.g. from [2, 5] to [2, 3, 4])
+                    range_where_replace = list(range(*to_avg[n_interval]))
+                    for token_col in range_where_replace:
+                        # replace with the token emb. with the avg taken from the last token of the word emb. 
+                        # explaination: (for ele in [2, 3, 4] replace with the values in col 5, (same as range_where_replace[-1] + 1))
+                        attention_head_values[prompt_idx][token_col] = attention_head_values[prompt_idx][to_avg[n_interval][-1]]
             
     # store the output probabilities
     probs = invoker.output.logits[:,-1,:].softmax(dim=-1)

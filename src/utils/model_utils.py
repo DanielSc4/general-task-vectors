@@ -5,7 +5,7 @@ import random
 import functools
 
 from nnsight import LanguageModel
-from transformers import AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
 
 
 # thanks to https://stackoverflow.com/questions/31174295/getattr-and-setattr-on-nested-subobjects-chained-properties
@@ -125,13 +125,27 @@ def load_gpt_model_and_tokenizer(
         }
 
     elif 'phi-2' or 'zephyr' in model_name.lower():
-        model = LanguageModel(
-            model_name, 
-            device_map=device if not load_in_8bit else {'':0}, 
-            trust_remote_code = True, 
-            load_in_8bit=load_in_8bit,
-            torch_dtype=torch.bfloat16 if not load_in_8bit else torch.float32,
-        )
+        if 'stablelm-2-zephyr' in model_name.lower():
+            # tmp fix, trust_remote_code must be in config and tokenizer loader as well
+            mm = AutoModelForCausalLM.from_pretrained(model_name, trust_remote_code=True)
+            tok = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+            conf = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
+            model = LanguageModel(
+                mm,
+                tokenizer=tok,
+                config = conf,
+                load_in_8bit=load_in_8bit,
+            )
+            model.config = conf # needed, idk why
+            print('[x] Loading model manually to fix trust_remote_code issue when loading')
+        else:
+            model = LanguageModel(
+                model_name, 
+                device_map=device if not load_in_8bit else {'':0}, 
+                trust_remote_code = True, 
+                load_in_8bit=load_in_8bit,
+                torch_dtype=torch.bfloat16 if not load_in_8bit else torch.float32,
+            )
         std_CONFIG = {
             'n_heads': model.config.num_attention_heads,
             'n_layers': model.config.num_hidden_layers,
@@ -175,7 +189,7 @@ def load_gpt_model_and_tokenizer(
     else:
         raise NotImplementedError("Model config not yet implemented")
     
-    tokenizer = AutoTokenizer.from_pretrained(model_name)
+    tokenizer = model.tokenizer
     if not tokenizer.pad_token_id:
         tokenizer.pad_token_id = tokenizer.eos_token_id
 
