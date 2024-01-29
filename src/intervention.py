@@ -154,37 +154,37 @@ def compute_indirect_effect(
            range(config['n_layers']),
            total=config['n_layers'],
            leave=False,
-           desc=' -th layer'
+           desc=' -th layer',
         )
-        inner_bar_heads = tqdm(
-           range(config['n_heads']),
-           total=config['n_heads'],
-           leave=False,
-           desc=' -th head'
-        )
-
         for layer_i in inner_bar_layers:
+            inner_bar_heads = tqdm(
+                range(config['n_heads']),
+                total=config['n_heads'],
+                leave=False,
+                desc=' -th head',
+            )
             for head_j in inner_bar_heads:
                 pbar.set_description(
                     f'Processing edited model (l: {layer_i}/{config["n_layers"]}, h: {head_j}/{config["n_heads"]})'
                 )
                 returned = replace_heads_w_avg(
                     tokenized_prompt=current_batch_tokens,
-                    important_ids=current_batch_important_ids,
                     layers_heads=[(layer_i, head_j)],
                     avg_activations=[mean_activations[layer_i, head_j]],
                     model=model,
                     config=config,
                 )
                 edited[:, layer_i, head_j, :] = returned
+            
         probs_edited.append(edited.cpu())
 
     probs_original = torch.vstack(probs_original)
     probs_edited = torch.vstack(probs_edited)
 
-    # CIE(ij) = probability of correct_label token y (w/ edited model) - probability of correct_label token y (w/ original model)
+    # CIE(ij) = probability of correct_label token y (w/ edited model) - probability of correct_label token y (w/ original model). Some e.g.
     #      e.g. CIE(ij) = 0.9 - 0.1 = 0.8      head has great effect
     #      e.g. CIE(ij) = 0.3 - 0.1 = 0.2      head does not influence too much the output
+    #      e.g. CIE(ij) = 0.3 - 0.8 = -0.5     head contribute to the output in an inverse way
 
     # considering only the first generated id
     correct_ids = list(map(lambda x: x[0], tokenizer(all_correct_labels)['input_ids']))
@@ -194,10 +194,10 @@ def compute_indirect_effect(
     for prompt_idx in range(len(correct_ids)):
         for layer in range(config['n_layers']):
             for head in range(config['n_heads']):
-                prob_correct_token_original_model = probs_edited[
+                prob_correct_token_edited_model = probs_edited[
                     prompt_idx, layer, head, correct_ids[prompt_idx]
                 ].item()
-                prob_correct_token_edited_model = probs_original[
+                prob_correct_token_original_model = probs_original[
                     prompt_idx, correct_ids[prompt_idx]
                 ].item()
                 cie[prompt_idx, layer, head] = prob_correct_token_edited_model - prob_correct_token_original_model
