@@ -169,6 +169,7 @@ def compute_indirect_effect(
                 )
                 returned = replace_heads_w_avg(
                     tokenized_prompt=current_batch_tokens,
+                    important_ids =current_batch_important_ids,
                     layers_heads=[(layer_i, head_j)],
                     avg_activations=[mean_activations[layer_i, head_j]],
                     model=model,
