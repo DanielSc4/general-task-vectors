@@ -225,4 +225,15 @@ def compute_indirect_effect(
                 cie[prompt_idx, layer, head] = prob_correct_token_edited_model - prob_correct_token_original_model
     
     
-    return cie, probs_original, probs_edited
+    return cie.mean(dim=0), probs_original, probs_edited
+
+
+
+def use_task_vector(
+    mean_activations: torch.Tensor,
+    top_heads: list[tuple],
+    model,
+    prompt
+):
+    # TBD
+    pass
