@@ -3,6 +3,7 @@ import torch
 from pathlib import Path
 import json
 import os
+import random
 
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
@@ -23,6 +24,8 @@ def main(
         dataset_name: str = 'following',
         icl_examples: int = 4,
         batch_size: int = 12,
+        mean_support: int = 100,
+        aie_support: int = 25,
 ):
     # create directory for storage
     Path('./output/').mkdir(parents=True, exist_ok=True) 
@@ -32,7 +35,6 @@ def main(
     dataset = list(map(lambda x: tuple(x.values()), dataset))
     print(f'[x] Loading dataset, len: {len(dataset)}')
 
-
     torch.set_grad_enabled(False)
     set_seed(32)
 
@@ -41,9 +43,11 @@ def main(
 
     print(f'{model_name} on {device} device')
     
+    dataset_for_mean = random.sample(dataset, mean_support)
+
     # generate prompts
     tok_ret, ids_ret, correct_labels = tokenize_ICL(
-        tokenizer, ICL_examples = icl_examples, dataset = dataset,
+        tokenizer, ICL_examples = icl_examples, dataset = dataset_for_mean,
     )
 
     # get mean activations from the model (or stored ones if already exist)
@@ -66,12 +70,13 @@ def main(
         # store mean_activations
         torch.save(mean_activations, path_to_mean_activations)
     
+    dataset_for_aie = random.sample(dataset, aie_support)
     # compute causal mediation analysis over attention heads
     cie, probs_original, probs_edited  = compute_indirect_effect(
         model=model,
         tokenizer=tokenizer,
         config=config,
-        dataset=dataset, 
+        dataset=dataset_for_aie, 
         mean_activations=mean_activations,
         ICL_examples = icl_examples,
         batch_size=batch_size,

@@ -92,7 +92,7 @@ def extract_activations(
 
 def get_mean_activations(
         tokenized_prompts: list[torch.Tensor], 
-        important_ids: list[int], 
+        important_ids: list[int],
         tokenizer: AutoTokenizer,
         model: AutoModelForCausalLM, 
         config: dict[str, any],
@@ -113,7 +113,6 @@ def get_mean_activations(
     Returns:
         torch.Tensor: mean of activations (`n_layers, n_heads, seq_len, d_head`)
     """
-
     activations, outputs = extract_activations(
         tokenized_prompts=tokenized_prompts, 
         model=model, 
@@ -125,11 +124,12 @@ def get_mean_activations(
     # move tensors to CPU for memory issues
     for idx in range(len(activations)):
         activations[idx] = activations[idx].cpu()
-
-    # keep only important tokens averaging the rest (activations_clean: [batch, n_layers, n_heads, seq, d_head])
-    activations_clean = torch.stack(
-        [filter_activations(activations[i], important_ids[i]) for i in range(len(activations))]
-    )
+    
+    else:
+        # keep only important tokens averaging the rest (activations_clean: [batch, n_layers, n_heads, seq, d_head])
+        activations_clean = torch.stack(
+            [filter_activations(activations[i], important_ids[i]) for i in range(len(activations))]
+        )
 
     # considering only the first token to evaluate the output
     only_output_tokens = np.array(list(map(lambda x: x.squeeze()[-1].item(), outputs)))

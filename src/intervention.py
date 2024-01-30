@@ -2,6 +2,7 @@ from typing import Any
 import torch
 from tqdm import tqdm
 import numpy as np
+import random
 
 from src.utils.model_utils import rgetattr
 from src.utils.prompt_helper import tokenize_ICL, randomize_dataset, pad_input_and_ids, find_missing_ranges
@@ -27,6 +28,7 @@ def replace_heads_w_avg(
         avg_activations: list[torch.tensor], 
         model, 
         config,
+        last_token_only: bool = True,
     ):
     """Replace the activation of specific head(s) (listed in `layers_heads`) with the avg_activation for each 
     specific head (listed in `avg_activations`) only in `important_ids` positions. 
@@ -39,6 +41,8 @@ def replace_heads_w_avg(
         avg_activations (list[torch.tensor]): list of activations (`size: (seq_len, d_head)`) for each head listed in layers_heads. The length must be the same of layers_heads
         model (): model
         config (): model's config
+        last_token_only (bool): Whether consider the last token from activation as the only important token to replace. 
+            If False, every important_id with the mean_activation and mutli tokens word takes the mean activation from their last token activation. Defaults: True.
 
     Returns:
         torch.Tensor: model's probabilities over vocab (post-softmax) with the replaced activations
@@ -47,6 +51,10 @@ def replace_heads_w_avg(
 
     d_head = config['d_model'] // config['n_heads']
 
+    """
+    Developer note: here avg_activations is a list of activations for each head to change
+        if calcultaing AIE, the length of the list is 1.
+    """
     with model.invoke(tokenized_prompt) as invoker:
         for idx, (num_layer, num_head) in enumerate(layers_heads):
             # select the head (output shape is torch.Size([batch, seq_len, d_model]))
@@ -59,25 +67,27 @@ def replace_heads_w_avg(
             ]
             # for each prompt in batch and important ids of that prompt
             # substitute with the mean activation (unsqueeze for adding the batch dimension)
-            pbar_inner = tqdm(
-                zip(range(attention_head_values.shape[0]), important_ids),
-                leave=False,
-                desc=f'Replacing -th batch element',
-                total=attention_head_values.shape[0],
-            )
-            for prompt_idx, prompt_imp_ids in pbar_inner:
-                # replace important ids with the mean activations
-                attention_head_values[prompt_idx][prompt_imp_ids] = avg_activations[idx].unsqueeze(0)
-                to_avg = find_missing_ranges(prompt_imp_ids)
-                # replace non important ids (i.e. other tokens of the same word) with the same values (avg of the token activation)
-                for n_interval in range(len(to_avg)):
-                    # calculate range where the substitution must take place (e.g. from [2, 5] to [2, 3, 4])
-                    range_where_replace = list(range(*to_avg[n_interval]))
-                    for token_col in range_where_replace:
-                        # replace with the token emb. with the avg taken from the last token of the word emb. 
-                        # explaination: (for ele in [2, 3, 4] replace with the values in col 5, (same as range_where_replace[-1] + 1))
-                        attention_head_values[prompt_idx][token_col] = attention_head_values[prompt_idx][to_avg[n_interval][-1]]
-            
+            for prompt_idx, prompt_imp_ids in zip(
+                range(attention_head_values.shape[0]), 
+                important_ids,
+            ):
+                if last_token_only:
+                    attention_head_values[prompt_idx][      # shape: [seq (256), d_head]
+                        prompt_imp_ids[-1], :
+                    ] = avg_activations[idx][-1]     # shape: [seq (1 (the -1 pos.), d_model)] pos. 255 aka 256-th token (when max_len = 256)
+                else:
+                    # replace important ids with the mean activations
+                    attention_head_values[prompt_idx][prompt_imp_ids] = avg_activations[idx].unsqueeze(0)
+                    to_avg = find_missing_ranges(prompt_imp_ids)
+                    # replace non important ids (i.e. other tokens of the same word) with the same values (avg of the token activation)
+                    for n_interval in range(len(to_avg)):
+                        # calculate range where the substitution must take place (e.g. from [2, 5] to [2, 3, 4])
+                        range_where_replace = list(range(*to_avg[n_interval]))
+                        for token_col in range_where_replace:
+                            # replace with the token emb. with the avg taken from the last token of the word emb. 
+                            # explaination: (for ele in [2, 3, 4] replace with the values in col 5, (same as range_where_replace[-1] + 1))
+                            attention_head_values[prompt_idx][token_col] = attention_head_values[prompt_idx][to_avg[n_interval][-1]]
+                
     # store the output probabilities
     probs = invoker.output.logits[:,-1,:].softmax(dim=-1)
     return probs
@@ -91,6 +101,7 @@ def compute_indirect_effect(
         mean_activations: torch.Tensor,
         ICL_examples: int = 4,
         batch_size: int = 32,
+        aie_support: int = 25,
     ):
     """Compute indirect effect on the provided dataset by comparing the prediction of the original model
     to the predicition of the modified model. Specifically, for the modified model, each attention head
@@ -105,13 +116,16 @@ def compute_indirect_effect(
         mean_activations (torch.Tensor): mean activation for each head in the model. Should be [n_layers, n_heads, seq_len, d_head]
         ICL_examples (int, optional): number of ICL examples exluding the final prompt. Defaults to 4.
         batch_size (int, optional): batch size dimension. Defaults to 32.
+        aie_support (int, optional): number of prompt supporting the average indirect effect on the model. Defaults to 25.
 
     Returns:
         _type_: TBD
     """
+
+    dataset = random.sample(dataset, aie_support)
     # randomize prompts to make the model unable to guess the correct answer
     randomized_dataset = randomize_dataset(dataset)
-
+    
     all_tokenized_prompt, all_important_ids, all_correct_labels = tokenize_ICL(
         tokenizer, 
         ICL_examples = ICL_examples, 
@@ -169,7 +183,7 @@ def compute_indirect_effect(
                 )
                 returned = replace_heads_w_avg(
                     tokenized_prompt=current_batch_tokens,
-                    important_ids =current_batch_important_ids,
+                    important_ids=current_batch_important_ids,
                     layers_heads=[(layer_i, head_j)],
                     avg_activations=[mean_activations[layer_i, head_j]],
                     model=model,
