@@ -122,7 +122,6 @@ def compute_indirect_effect(
         _type_: TBD
     """
 
-    dataset = random.sample(dataset, aie_support)
     # randomize prompts to make the model unable to guess the correct answer
     randomized_dataset = randomize_dataset(dataset)
     
@@ -131,6 +130,14 @@ def compute_indirect_effect(
         ICL_examples = ICL_examples, 
         dataset = randomized_dataset
     )
+    # create a subset with aie_support elements
+    print(len(all_tokenized_prompt))
+    idx_for_aie = random.sample(range(len(all_tokenized_prompt)), aie_support)
+    selected_examples = [
+        (all_tokenized_prompt[i], all_important_ids[i], all_correct_labels[i])
+        for i in idx_for_aie
+    ]
+    all_tokenized_prompt, all_important_ids, all_correct_labels = zip(*selected_examples)
 
     # probabilities over vocab from the original model
     probs_original = [] # torch.zeros([len(randomized_dataset), config['vocab_size']])

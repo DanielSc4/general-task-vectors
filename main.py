@@ -43,12 +43,17 @@ def main(
 
     print(f'{model_name} on {device} device')
     
-    dataset_for_mean = random.sample(dataset, mean_support)
-
     # generate prompts
     tok_ret, ids_ret, correct_labels = tokenize_ICL(
-        tokenizer, ICL_examples = icl_examples, dataset = dataset_for_mean,
+        tokenizer, ICL_examples = icl_examples, dataset = dataset,
     )
+    # create a subset with mean_support elements
+    idx_for_mean = random.sample(range(len(tok_ret)), mean_support)
+    selected_examples = [
+        (tok_ret[i], ids_ret[i], correct_labels[i])
+        for i in idx_for_mean
+    ]
+    tok_ret, ids_ret, correct_labels = zip(*selected_examples)
 
     # get mean activations from the model (or stored ones if already exist)
     path_to_mean_activations = f'./output/{dataset_name}_mean_activations_{model_name.replace("/", "-")}_ICL{icl_examples}.pt'
@@ -70,16 +75,16 @@ def main(
         # store mean_activations
         torch.save(mean_activations, path_to_mean_activations)
     
-    dataset_for_aie = random.sample(dataset, aie_support)
     # compute causal mediation analysis over attention heads
     cie, probs_original, probs_edited  = compute_indirect_effect(
         model=model,
         tokenizer=tokenizer,
         config=config,
-        dataset=dataset_for_aie, 
+        dataset=dataset, 
         mean_activations=mean_activations,
         ICL_examples = icl_examples,
         batch_size=batch_size,
+        aie_support=aie_support,
     )
     torch.save(cie, f'./output/{dataset_name}_cie_{model_name.replace("/", "-")}_ICL{icl_examples}.pt')
 
