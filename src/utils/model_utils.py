@@ -226,3 +226,26 @@ def set_seed(seed: int) -> None:
 
     # os seed
     os.environ['PYTHONHASHSEED'] = str(seed)
+
+
+def get_top_attention_heads(
+    cie = torch.Tensor,
+    num_heads: int = 15,
+):
+    """
+    Get the indices of the top attention heads in CIE
+    """
+    # indeces of the top num_heads highest numbers
+    flat_indices = np.argsort(cie.flatten().cpu())[-num_heads:]
+    # convert flat indices to 2D incices
+    top_indices = np.unravel_index(flat_indices, cie.shape)
+    coordinates_list = list(zip(top_indices[0], top_indices[1]))
+
+    # sort the list based on the corresponding values in descending order
+    sorted_coordinates_list = sorted(
+        coordinates_list, 
+        key=lambda x: cie[x[0], x[1]], 
+        reverse=True
+    )
+    return sorted_coordinates_list
+

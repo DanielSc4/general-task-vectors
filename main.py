@@ -1,7 +1,6 @@
 import fire
 import torch
 from pathlib import Path
-import json
 import os
 import random
 import numpy as np
@@ -10,38 +9,10 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from src.utils.model_utils import load_gpt_model_and_tokenizer, set_seed
+from src.utils.model_utils import load_gpt_model_and_tokenizer, set_seed, get_top_attention_heads
 from src.extraction import get_mean_activations
-from src.utils.prompt_helper import tokenize_ICL
+from src.utils.prompt_helper import tokenize_ICL, load_json_dataset
 from src.intervention import compute_indirect_effect, eval_task_vector
-
-def load_json_dataset(json_path):
-    with open(json_path, encoding='utf-8') as file:
-        dataset = json.load(file)
-    return dataset
-
-
-def get_top_attention_heads(
-    cie = torch.Tensor,
-    num_heads: int = 15,
-):
-    """
-    Get the indices of the top attention heads in CIE
-    """
-    # indeces of the top num_heads highest numbers
-    flat_indices = np.argsort(cie.flatten().cpu())[-num_heads:]
-    # convert flat indices to 2D incices
-    top_indices = np.unravel_index(flat_indices, cie.shape)
-    coordinates_list = list(zip(top_indices[0], top_indices[1]))
-
-    # sort the list based on the corresponding values in descending order
-    sorted_coordinates_list = sorted(
-        coordinates_list, 
-        key=lambda x: cie[x[0], x[1]], 
-        reverse=True
-    )
-
-    return sorted_coordinates_list
 
 
 def main(

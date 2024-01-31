@@ -1,5 +1,13 @@
 import torch
 import random
+import json
+
+
+def load_json_dataset(json_path):
+    with open(json_path, encoding='utf-8') as file:
+        dataset = json.load(file)
+    return dataset
+
 
 def build_prompt_txt(queries: list[str], answers: list[str]):
     """Build the prompt following the default template. Provide a list of queries (length = n ICL examples + 1)
