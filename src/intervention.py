@@ -88,7 +88,7 @@ def replace_heads_w_avg(
                             # explaination: (for ele in [2, 3, 4] replace with the values in col 5, (same as range_where_replace[-1] + 1))
                             attention_head_values[prompt_idx][token_col] = attention_head_values[prompt_idx][to_avg[n_interval][-1]]
                 
-    # store the output probabilities
+    # store the output probability
     probs = invoker.output.logits[:,-1,:].softmax(dim=-1)
     return probs
 
@@ -131,7 +131,6 @@ def compute_indirect_effect(
         dataset = randomized_dataset
     )
     # create a subset with aie_support elements
-    print(len(all_tokenized_prompt))
     idx_for_aie = random.sample(range(len(all_tokenized_prompt)), aie_support)
     selected_examples = [
         (all_tokenized_prompt[i], all_important_ids[i], all_correct_labels[i])
@@ -228,12 +227,51 @@ def compute_indirect_effect(
     return cie.mean(dim=0), probs_original, probs_edited
 
 
+def calculate_acc_between_labels(output, gt):
+    correct_idx = (output == gt)
+    accuracy = correct_idx.sum() / len(correct_idx)
+    return accuracy
 
-def use_task_vector(
-    mean_activations: torch.Tensor,
-    top_heads: list[tuple],
-    model,
-    prompt
-):
-    # TBD
-    pass
+def eval_task_vector(
+        mean_activations: torch.Tensor,
+        top_heads: list[tuple],
+        model,
+        tokenizer,
+        config,
+        list_of_promtps: list[tuple],
+    ):
+    
+    all_tokenized_prompt, all_important_ids, all_correct_labels = tokenize_ICL(
+        tokenizer, 
+        ICL_examples = 0,       # doing zero-shot evaluation 
+        dataset = list_of_promtps,
+    )
+
+    # calculte probabilities with a single forward pass
+    probs_original = []
+    for prompt in all_tokenized_prompt:
+        with model.invoke(prompt) as invoker:
+            pass # no changes to make in the forward pass
+        logits = invoker.output.logits
+        logits = logits[:,-1,:] # select only the predicted token (i.e. the final token, keeping batch and vocab_size)
+    # store the predicted token id
+    probs_original.append(
+        logits.softmax(dim=-1).cpu().argmax(dim=1).item()
+    )
+
+    # calculate probabilities replacing heads (i.e. apply task vector)
+    probs_task = replace_heads_w_avg(
+        tokenized_prompt=all_tokenized_prompt,
+        important_ids=all_important_ids,
+        layers_heads=top_heads,
+        avg_activations=mean_activations,
+        model=model,
+        config=config,
+        last_token_only=True,
+    )
+    
+    probs_task = probs_task.argmax(dim=1)
+    
+    print(f'[-] Zero-shot accuracy of non-edited model {calculate_acc_between_labels(probs_original, all_correct_labels)}')
+    print(f'[-] Zero-shot accuracy of edited model {calculate_acc_between_labels(probs_task, all_correct_labels)}')
+    

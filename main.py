@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 from src.utils.model_utils import load_gpt_model_and_tokenizer, set_seed
 from src.extraction import get_mean_activations
 from src.utils.prompt_helper import tokenize_ICL
-from src.intervention import compute_indirect_effect
+from src.intervention import compute_indirect_effect, eval_task_vector
 
 def load_json_dataset(json_path):
     with open(json_path, encoding='utf-8') as file:
@@ -52,8 +52,24 @@ def main(
     batch_size: int = 12,
     mean_support: int = 100,
     aie_support: int = 25,
+    task_vector_eval_dim: int = 40,
     save_plot: bool = True,
+    use_local_backups: bool = True,
 ):
+    """Main function to get the mean_attention, CIE on model and zero-shot results
+
+    Args:
+        model_name (str, optional): model name as huggingface. Defaults to 'gpt2'.
+        load_in_8bit (bool, optional): option to load the model in 8bit. Defaults to False.
+        dataset_name (str, optional): name of the dataset (`.json` in `./data/` dir). Defaults to 'following'.
+        icl_examples (int, optional): number of ICL examples, 0 for zero-shot. Defaults to 4.
+        batch_size (int, optional): batch size for cie intervention. Defaults to 12.
+        mean_support (int, optional): number of example to average over when computing mean_activation. Defaults to 100.
+        aie_support (int, optional): number of example to average over when computning CIE matrix. Defaults to 25.
+        task_vector_eval_dim (int, optional): number of example for the final zero-shot evaluation. Defaults to 40.
+        save_plot (bool, optional): whether to save a plot of the CIE matrix in `./output/plot/` dir. Defaults to True.
+        use_local_backups (bool, optional): when exists, do not compute mean_activation and CIE bt get the backup in the `./output/` dir. Defaults to True.
+    """
     # create directory for storage
     Path('./output/').mkdir(parents=True, exist_ok=True)
     if save_plot:
@@ -104,6 +120,7 @@ def main(
         # store mean_activations
         torch.save(mean_activations, path_to_mean_activations)
     
+
     # compute causal mediation analysis over attention heads
     cie, probs_original, probs_edited  = compute_indirect_effect(
         model=model,
@@ -117,7 +134,7 @@ def main(
     )
     torch.save(cie, f'./output/{dataset_name}_cie_{model_name.replace("/", "-")}_ICL{icl_examples}.pt')
 
-    print('[x] Done')
+    print('[x] CIE output saved')
 
     if save_plot:
         print('[x] Generating CIE plot')
@@ -125,10 +142,23 @@ def main(
         plt.title(model_name.replace("/", "-"))
         plt.xlabel('head')
         plt.ylabel('layer')
-        plt.savefig(f'./output/plots/{dataset_name}_cie_{model_name.replace("/", "-")}_ICL{icl_examples}.png')
+        plt.savefig(f'./output/plots/{dataset_name}_cie_{model_name.replace("/", "-")[1]}_ICL{icl_examples}.png')
 
     # selecting top_10 heads
     top_heads = get_top_attention_heads(cie, num_heads=10)
+
+
+    # create task vector, embeddings the mean attention into these heads
+    
+    # testing model
+    eval_task_vector(
+        mean_activations=mean_activations,
+        top_heads=top_heads,
+        model=model,
+        tokenizer=tokenizer,
+        config=config,
+        list_of_promtps=random.sample(range(len(dataset)), task_vector_eval_dim),
+    )
 
 
 
