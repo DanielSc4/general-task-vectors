@@ -29,7 +29,7 @@ def get_top_attention_heads(
     Get the indices of the top attention heads in CIE
     """
     # indeces of the top num_heads highest numbers
-    flat_indices = np.argsort(cie.flatten())[-num_heads:]
+    flat_indices = np.argsort(cie.flatten().cpu())[-num_heads:]
     # convert flat indices to 2D incices
     top_indices = np.unravel_index(flat_indices, cie.shape)
     coordinates_list = list(zip(top_indices[0], top_indices[1]))
@@ -103,7 +103,7 @@ def main(
     # get mean activations from the model (or stored ones if already exist)
     path_to_mean_activations = f'./output/{dataset_name}_mean_activations_{model_name.replace("/", "-")}_ICL{icl_examples}.pt'
 
-    if os.path.isfile(path_to_mean_activations):
+    if os.path.isfile(path_to_mean_activations) and use_local_backups:
         print(f'[x] Found mean_activations at: {path_to_mean_activations}')
         mean_activations = torch.load(path_to_mean_activations)
         mean_activations = mean_activations.to(device)
@@ -121,24 +121,30 @@ def main(
         torch.save(mean_activations, path_to_mean_activations)
     
 
-    # compute causal mediation analysis over attention heads
-    cie, probs_original, probs_edited  = compute_indirect_effect(
-        model=model,
-        tokenizer=tokenizer,
-        config=config,
-        dataset=dataset, 
-        mean_activations=mean_activations,
-        ICL_examples = icl_examples,
-        batch_size=batch_size,
-        aie_support=aie_support,
-    )
-    torch.save(cie, f'./output/{dataset_name}_cie_{model_name.replace("/", "-")}_ICL{icl_examples}.pt')
-
-    print('[x] CIE output saved')
+    # get mean activations from the model (or stored ones if already exist)
+    path_to_cie = f'./output/{dataset_name}_cie_{model_name.replace("/", "-")}_ICL{icl_examples}.pt'
+    if os.path.isfile(path_to_cie) and use_local_backups:
+        print(f'[x] Found CIE at {path_to_cie}')
+        cie = torch.load(path_to_cie)
+        cie = cie.to(device)
+    else:
+        # compute causal mediation analysis over attention heads
+        cie, _, _  = compute_indirect_effect(
+            model=model,
+            tokenizer=tokenizer,
+            config=config,
+            dataset=dataset, 
+            mean_activations=mean_activations,
+            ICL_examples = icl_examples,
+            batch_size=batch_size,
+            aie_support=aie_support,
+        )
+        torch.save(cie, path_to_cie)
+        print('[x] CIE output saved')
 
     if save_plot:
         print('[x] Generating CIE plot')
-        ax = sns.heatmap(cie, linewidth=0.5, cmap='RdBu', center=0)
+        ax = sns.heatmap(cie.cpu(), linewidth=0.5, cmap='RdBu', center=0)
         plt.title(model_name.replace("/", "-"))
         plt.xlabel('head')
         plt.ylabel('layer')
@@ -147,17 +153,16 @@ def main(
     # selecting top_10 heads
     top_heads = get_top_attention_heads(cie, num_heads=10)
 
-
-    # create task vector, embeddings the mean attention into these heads
-    
+    idx_for_eval = random.sample(range(len(dataset)), task_vector_eval_dim)
     # testing model
+    print('[x] Evaluating model with zero_shot examples')
     eval_task_vector(
         mean_activations=mean_activations,
         top_heads=top_heads,
         model=model,
         tokenizer=tokenizer,
         config=config,
-        list_of_promtps=random.sample(range(len(dataset)), task_vector_eval_dim),
+        list_of_promtps=[dataset[i] for i in idx_for_eval]
     )
 
 
