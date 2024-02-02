@@ -162,35 +162,35 @@ def load_gpt_model_and_tokenizer(
             'layer_hook_names': [
                 f'model.layers.{layer}' for layer in range(model.config.num_hidden_layers)
             ],
-            'attn_name': 'self_attn',
+            'attn_name': 'self_attn.o_proj',
             'attn_hook_names': [
-                f'model.layers.{layer}.self_attn' for layer in range(model.config.num_hidden_layers)
+                f'model.layers.{layer}.self_attn.o_proj' for layer in range(model.config.num_hidden_layers)
             ],
         }
 
-    elif 'phi-2' in model_name.lower():
-        model = LanguageModel(
-            model_name, 
-            device_map=device if not load_in_8bit else {'':0}, 
-            trust_remote_code = True,
-            load_in_8bit=load_in_8bit,
-            torch_dtype=torch.bfloat16 if not load_in_8bit else torch.float32,
-        )
-        std_CONFIG = {
-            'n_heads': model.config.num_attention_heads,
-            'n_layers': model.config.num_hidden_layers,
-            'd_model': model.config.hidden_size,     # residual stream
-            'name': model.config._name_or_path,
-            'vocab_size': model.config.vocab_size,
-            'layer_name': 'model.layers',
-            'layer_hook_names': [
-                f'model.layers.{layer}' for layer in range(model.config.num_hidden_layers)
-            ],
-            'attn_name': 'self_attn',
-            'attn_hook_names': [
-                f'model.layers.{layer}.self_attn' for layer in range(model.config.num_hidden_layers)
-            ],
-        }
+    # elif 'phi-2' in model_name.lower():
+    #     model = LanguageModel(
+    #         model_name, 
+    #         device_map=device if not load_in_8bit else {'':0}, 
+    #         trust_remote_code = True,
+    #         load_in_8bit=load_in_8bit,
+    #         torch_dtype=torch.bfloat16 if not load_in_8bit else torch.float32,
+    #     )
+    #     std_CONFIG = {
+    #         'n_heads': model.config.num_attention_heads,
+    #         'n_layers': model.config.num_hidden_layers,
+    #         'd_model': model.config.hidden_size,     # residual stream
+    #         'name': model.config._name_or_path,
+    #         'vocab_size': model.config.vocab_size,
+    #         'layer_name': 'model.layers',
+    #         'layer_hook_names': [
+    #             f'model.layers.{layer}' for layer in range(model.config.num_hidden_layers)
+    #         ],
+    #         'attn_name': 'self_attn',
+    #         'attn_hook_names': [
+    #             f'model.layers.{layer}.self_attn' for layer in range(model.config.num_hidden_layers)
+    #         ],
+    #     }
 
     else:
         raise NotImplementedError("Model config not yet implemented")

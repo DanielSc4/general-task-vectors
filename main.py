@@ -121,23 +121,6 @@ def main(
         plt.ylabel('layer')
         plt.savefig(f'./output/plots/{dataset_name}_cie_{model_name.replace("/", "-")[1]}_ICL{icl_examples}.png')
 
-    # selecting top_10 heads
-    top_heads = get_top_attention_heads(cie, num_heads=10)
-
-    idx_for_eval = random.sample(range(len(dataset)), task_vector_eval_dim)
-    # testing model
-    print('[x] Evaluating model with zero_shot examples')
-    eval_task_vector(
-        mean_activations=mean_activations,
-        top_heads=top_heads,
-        model=model,
-        tokenizer=tokenizer,
-        config=config,
-        list_of_promtps=[dataset[i] for i in idx_for_eval]
-    )
-
-
-
 if __name__ == "__main__":
     fire.Fire(main)
 

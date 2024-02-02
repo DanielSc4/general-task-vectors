@@ -70,8 +70,11 @@ def extract_activations(
                 layer_attn_activations = []
                 for layer_i in range(len(config['attn_hook_names'])):
                     pbar.set_description(f"[x] Extracting activations (layer: {layer_i:02d}/{len(config['attn_hook_names'])})")
+                    # print(config['attn_hook_names'][layer_i])
+                    # print(rgetattr(model, config['attn_hook_names'][layer_i]).input.shape)
+                    # print(rgetattr(model, config['attn_hook_names'][layer_i]).input[0][0].shape)
                     layer_attn_activations.append(
-                        rgetattr(model, config['attn_hook_names'][layer_i]).output.save()
+                        rgetattr(model, config['attn_hook_names'][layer_i]).input[0][0].save()       # before: *_i]).output.save() 
                     )
         # get the values from the activations
         layer_attn_activations = [att.value for att in layer_attn_activations]
