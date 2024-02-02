@@ -124,17 +124,8 @@ def load_gpt_model_and_tokenizer(
             ],
         }
 
-    elif 'phi-2' or 'zephyr' in model_name.lower():
+    elif 'zephyr' in model_name.lower():
         if 'stablelm-2-zephyr' in model_name.lower():
-            # tmp fix, trust_remote_code must be in config and tokenizer loader as well
-            # mm = AutoModelForCausalLM.from_pretrained(
-            #     model_name, 
-            #     device_map=device if not load_in_8bit else {'':0}, 
-            #     trust_remote_code=True,
-            #     load_in_8bit=load_in_8bit
-            # )
-            # tok = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-            # conf = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
             model = LanguageModel(
                 model_name,
                 device_map=device if not load_in_8bit else {'':0}, 
@@ -168,30 +159,30 @@ def load_gpt_model_and_tokenizer(
             ],
         }
 
-    # elif 'phi-2' in model_name.lower():
-    #     model = LanguageModel(
-    #         model_name, 
-    #         device_map=device if not load_in_8bit else {'':0}, 
-    #         trust_remote_code = True,
-    #         load_in_8bit=load_in_8bit,
-    #         torch_dtype=torch.bfloat16 if not load_in_8bit else torch.float32,
-    #     )
-    #     std_CONFIG = {
-    #         'n_heads': model.config.num_attention_heads,
-    #         'n_layers': model.config.num_hidden_layers,
-    #         'd_model': model.config.hidden_size,     # residual stream
-    #         'name': model.config._name_or_path,
-    #         'vocab_size': model.config.vocab_size,
-    #         'layer_name': 'model.layers',
-    #         'layer_hook_names': [
-    #             f'model.layers.{layer}' for layer in range(model.config.num_hidden_layers)
-    #         ],
-    #         'attn_name': 'self_attn',
-    #         'attn_hook_names': [
-    #             f'model.layers.{layer}.self_attn' for layer in range(model.config.num_hidden_layers)
-    #         ],
-    #     }
 
+    elif 'phi-2' in model_name.lower():
+        model = LanguageModel(
+            model_name, 
+            device_map=device if not load_in_8bit else {'':0}, 
+            trust_remote_code = True, 
+            load_in_8bit=load_in_8bit,
+            torch_dtype=torch.bfloat16 if not load_in_8bit else torch.float32,
+        )
+        std_CONFIG = {
+            'n_heads': model.config.num_attention_heads,
+            'n_layers': model.config.num_hidden_layers,
+            'd_model': model.config.hidden_size,     # residual stream
+            'name': model.config._name_or_path,
+            'vocab_size': model.config.vocab_size,
+            'layer_name': 'model.layers',
+            'layer_hook_names': [
+                f'model.layers.{layer}' for layer in range(model.config.num_hidden_layers)
+            ],
+            'attn_name': 'self_attn.dense',
+            'attn_hook_names': [
+                f'model.layers.{layer}.self_attn.dense' for layer in range(model.config.num_hidden_layers)
+            ],
+        }
     else:
         raise NotImplementedError("Model config not yet implemented")
     
