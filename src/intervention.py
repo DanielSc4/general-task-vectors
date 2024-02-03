@@ -63,7 +63,7 @@ def replace_heads_w_avg(
             # shape: tuple[output from the attention module (hidden state), present values (cache), attn_weights] 
             # (taking 0-th value)
             # new shape: torch.size([batchsize, seq_len(256 if max len), hidden_size])
-            attention_head_values = rgetattr(model, config['attn_hook_names'][num_layer]).output[
+            attention_head_values = rgetattr(model, config['attn_hook_names'][num_layer]).input[0][0][
                 :, :, (num_head * d_head) : ((num_head + 1) * d_head)
             ]
             # for each prompt in batch and important ids of that prompt

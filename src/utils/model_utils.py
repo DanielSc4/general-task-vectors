@@ -35,7 +35,7 @@ def load_gpt_model_and_tokenizer(
 
     device = get_device()
 
-    if model_name == 'gpt2':
+    if 'gpt2' in model_name.lower():
         model = LanguageModel(
             'gpt2', 
             device_map=device if not load_in_8bit else {'':0}, 
@@ -57,7 +57,29 @@ def load_gpt_model_and_tokenizer(
                 f'transformer.h.{layer}.attn' for layer in range(model.config.n_layer)
             ],
         }
-    
+
+    elif 'gpt-j' in model_name.lower():
+        model = LanguageModel(
+            model_name, 
+            device_map=device if not load_in_8bit else {'':0}, 
+            load_in_8bit=load_in_8bit
+        )
+        std_CONFIG = {
+            'n_heads': model.config.n_head,
+            'n_layers': model.config.n_layer,
+            'd_model': model.config.n_embd,     # residual stream
+            'name': model.config.name_or_path,
+            'vocab_size': model.config.vocab_size,
+            'layer_name': 'transformer.h',
+            'layer_hook_names': [
+                f'transformer.h.{layer}' for layer in range(model.config.n_layer)
+            ],
+            'attn_name': 'attn.out_proj',
+            'attn_hook_names': [
+                f'transformer.h.{layer}.attn.out_proj' for layer in range(model.config.n_layer)
+            ],
+        }
+
     elif 'gpt-neox' in model_name.lower():
         model = LanguageModel(
             model_name, 

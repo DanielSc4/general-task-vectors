@@ -119,7 +119,7 @@ def main(
         plt.title(model_name.replace("/", "-"))
         plt.xlabel('head')
         plt.ylabel('layer')
-        plt.savefig(f'./output/plots/{dataset_name}_cie_{model_name.replace("/", "-")[1]}_ICL{icl_examples}.png')
+        plt.savefig(f'./output/plots/{dataset_name}_cie_{model_name.replace("/", "-")}_ICL{icl_examples}.png')
 
 if __name__ == "__main__":
     fire.Fire(main)
