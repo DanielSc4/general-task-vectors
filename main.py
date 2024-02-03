@@ -23,7 +23,6 @@ def main(
     batch_size: int = 12,
     mean_support: int = 100,
     aie_support: int = 25,
-    task_vector_eval_dim: int = 40,
     save_plot: bool = True,
     use_local_backups: bool = True,
 ):

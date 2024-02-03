@@ -175,14 +175,14 @@ def compute_indirect_effect(
            range(config['n_layers']),
            total=config['n_layers'],
            leave=False,
-           desc=' -th layer',
+           desc='  -th layer',
         )
         for layer_i in inner_bar_layers:
             inner_bar_heads = tqdm(
                 range(config['n_heads']),
                 total=config['n_heads'],
                 leave=False,
-                desc=' -th head',
+                desc='    -th head',
             )
             for head_j in inner_bar_heads:
                 pbar.set_description(
