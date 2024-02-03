@@ -40,8 +40,11 @@ def main(
         save_plot (bool, optional): whether to save a plot of the CIE matrix in `./output/plot/` dir. Defaults to True.
         use_local_backups (bool, optional): when exists, do not compute mean_activation and CIE bt get the backup in the `./output/` dir. Defaults to True.
     """
-    # create directory for storage
+    # create directory for storage and models output
     Path('./output/').mkdir(parents=True, exist_ok=True)
+    path_to_output = f'./output/{model_name.split("/")[1]}'
+    Path(path_to_output).mkdir(parents=True, exist_ok=True)
+
     if save_plot:
         Path('./output/plots').mkdir(parents=True, exist_ok=True)
 
@@ -71,7 +74,7 @@ def main(
     tok_ret, ids_ret, correct_labels = zip(*selected_examples)
 
     # get mean activations from the model (or stored ones if already exist)
-    path_to_mean_activations = f'./output/{dataset_name}_mean_activations_{model_name.replace("/", "-")}_ICL{icl_examples}.pt'
+    path_to_mean_activations = f'{path_to_output}/{dataset_name}_mean_activations_{model_name.replace("/", "-")}_ICL{icl_examples}.pt'
 
     if os.path.isfile(path_to_mean_activations) and use_local_backups:
         print(f'[x] Found mean_activations at: {path_to_mean_activations}')
@@ -92,7 +95,7 @@ def main(
     
 
     # get mean activations from the model (or stored ones if already exist)
-    path_to_cie = f'./output/{dataset_name}_cie_{model_name.replace("/", "-")}_ICL{icl_examples}.pt'
+    path_to_cie = f'{path_to_output}/{dataset_name}_cie_{model_name.replace("/", "-")}_ICL{icl_examples}.pt'
     if os.path.isfile(path_to_cie) and use_local_backups:
         print(f'[x] Found CIE at {path_to_cie}')
         cie = torch.load(path_to_cie)
