@@ -146,7 +146,7 @@ def load_gpt_model_and_tokenizer(
             ],
         }
 
-    elif 'zephyr' in model_name.lower():
+    elif 'zephyr' or 'stablelm' in model_name.lower():
         if 'stablelm-2-zephyr' in model_name.lower():
             model = LanguageModel(
                 model_name,
@@ -206,7 +206,7 @@ def load_gpt_model_and_tokenizer(
             ],
         }
     else:
-        raise NotImplementedError("Model config not yet implemented")
+        raise NotImplementedError(f"Model config not yet implemented ({model_name})")
     
     tokenizer = model.tokenizer
     if not tokenizer.pad_token_id:

@@ -9,10 +9,10 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from src.utils.model_utils import load_gpt_model_and_tokenizer, set_seed, get_top_attention_heads
+from src.utils.model_utils import load_gpt_model_and_tokenizer, set_seed 
 from src.extraction import get_mean_activations
 from src.utils.prompt_helper import tokenize_ICL, load_json_dataset
-from src.intervention import compute_indirect_effect, eval_task_vector
+from src.intervention import compute_indirect_effect
 
 
 def main(
@@ -24,7 +24,7 @@ def main(
     mean_support: int = 100,
     aie_support: int = 25,
     save_plot: bool = True,
-    use_local_backups: bool = True,
+    use_local_backups: bool = False,
 ):
     """Main function to get the mean_attention, CIE on model and zero-shot results
 
@@ -38,7 +38,7 @@ def main(
         aie_support (int, optional): number of example to average over when computning CIE matrix. Defaults to 25.
         task_vector_eval_dim (int, optional): number of example for the final zero-shot evaluation. Defaults to 40.
         save_plot (bool, optional): whether to save a plot of the CIE matrix in `./output/plot/` dir. Defaults to True.
-        use_local_backups (bool, optional): when exists, do not compute mean_activation and CIE bt get the backup in the `./output/` dir. Defaults to True.
+        use_local_backups (bool, optional): when exists, do not compute mean_activation and CIE bt get the backup in the `./output/` dir. Defaults to False.
     """
     # create directory for storage and models output
     Path('./output/').mkdir(parents=True, exist_ok=True)
