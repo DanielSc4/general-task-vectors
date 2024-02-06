@@ -18,6 +18,7 @@ def evaluate_tv_zeroshot(
     tokenizer,
     config,
     prompts_from_dataset,
+    print_examples: bool = True,
 ):
     all_tokenized_prompt, all_important_ids, all_correct_labels = tokenize_ICL(
         tokenizer=tokenizer,
@@ -30,21 +31,28 @@ def evaluate_tv_zeroshot(
     )
 
     # original forward pass
-    probs_original = []
+    probs_original = {
+        'argmax_token': [],     # actual predicted token
+        'argmax_token_prob': [],     # actual predicted token probability
+        'gold_token_prob': [],       # probability assigned to the gold token
+        'top_x_tokens': [],     # top x tokens predicted
+    }
     pbar = tqdm(
-        all_tokenized_prompt,
+        zip(all_tokenized_prompt, all_correct_labels),
         total=len(all_tokenized_prompt),
         desc='Zero-shot forward pass on original model',
     )
-    for prompt in pbar:
+    for prompt, gold_token in pbar:
         # keeping batchsize = 1 for semplicity
         with model.invoke(prompt) as invoker:
             pass    # no action required
         logits = invoker.output.logits[:, -1, :]    # getting only the predicted token (i.e. final token), keeping batchsize and vocab_size
-        probs_original.append(
-            logits.softmax(dim=-1).cpu().argmax(dim=1).item()
-        )
-    probs_original = torch.tensor(probs_original)
+        softmaxed = logits.softmax(dim=-1).cpu().squeeze()
+        probs_original['argmax_token'].append(softmaxed.argmax().item())
+        probs_original['argmax_token_prob'].append(softmaxed[softmaxed.argmax()].item())
+        probs_original['gold_token_prob'].append(softmaxed[gold_token].item())
+        probs_original['top_x_tokens'].append(torch.topk(softmaxed, k=5, axis=-1)[1].tolist())
+
    
     # edited model forward pass
     probs_task = replace_heads_w_avg(
@@ -56,20 +64,32 @@ def evaluate_tv_zeroshot(
         config=config,
         last_token_only=True,
     )
-    probs_task = probs_task.cpu().argmax(dim=1)
+    probs_edited = {
+        'argmax_token': [],     # actual predicted token
+        'argmax_token_prob': [],     # actual predicted token probability
+        'gold_token_prob': [],       # probability assigned to the gold token
+        'top_x_tokens': [],     # top x tokens predicted
+    }
+    for softmaxed, gold_token in zip(probs_task.cpu(), all_correct_labels):
+        probs_edited['argmax_token'].append(softmaxed.argmax().item())
+        probs_edited['argmax_token_prob'].append(softmaxed[softmaxed.argmax()].item())
+        probs_edited['gold_token_prob'].append(softmaxed[gold_token].item())
+        probs_edited['top_x_tokens'].append(torch.topk(softmaxed, k=5, axis=-1)[1].tolist())
 
-
-    # print out results
-    for prompt, correct, original_out, edited_out in zip(
-        all_tokenized_prompt,
-        all_correct_labels, 
-        probs_original, 
-        probs_task
-    ):
-        print('Prompt: ' + tokenizer.decode(prompt, skip_special_tokens = True).replace("\n", " "))
-        print(f'\t Gold: {tokenizer.decode(correct)}')
-        print(f'\t Original out: {tokenizer.decode(original_out)}')
-        print(f'\t Edited out: {tokenizer.decode(edited_out)}')
+    if print_examples: 
+        # print out results
+        for idx, prompt in enumerate(all_tokenized_prompt):
+            print('Prompt: ' + tokenizer.decode(prompt, skip_special_tokens = True).replace("\n", " "))
+            print(f'  Gold: "{tokenizer.decode(all_correct_labels[idx])}"')
+            print(f'  Original out:')
+            print(f'    predicted token: "{tokenizer.decode(probs_original["argmax_token"][idx])}" with a probability of {probs_original["argmax_token_prob"][idx]:.2f}')
+            print(f'    gold token has a proability of {probs_original["gold_token_prob"][idx]:.2f}')
+            print(f'    top {len(probs_original["top_x_tokens"][idx])} tokens predicted: {[tokenizer.decode(ele) for ele in probs_original["top_x_tokens"][idx]]}')
+            print(f'  Edited out:')
+            print(f'    predicted token: "{tokenizer.decode(probs_edited["argmax_token"][idx])}" with a probability of {probs_edited["argmax_token_prob"][idx]:.2f}')
+            print(f'    gold token has a proability of {probs_edited["gold_token_prob"][idx]:.2f}')
+            print(f'    top {len(probs_edited["top_x_tokens"][idx])} tokens predicted: {[tokenizer.decode(ele) for ele in probs_edited["top_x_tokens"][idx]]}')
+            print()
 
 
 
