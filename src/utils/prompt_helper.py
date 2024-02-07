@@ -95,6 +95,8 @@ def tokenize_ICL(tokenizer, ICL_examples: int, dataset: list[tuple[str, str]]):
     Returns:
         tuple[list[torch.LongTensor], list[list[int]]]: tokenied prompt and important ids for each prompt
     """
+    assert len(dataset) > ICL_examples, f'dataset dimension ({len(dataset)}) is <= ICL_examples ({ICL_examples})'
+
     prompts = []
     for i in range(0, len(dataset), ICL_examples + 1):
         # select examples to end up in the prompt
