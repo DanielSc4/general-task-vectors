@@ -6,29 +6,54 @@ from tqdm import tqdm
 
 
 from src.utils.model_utils import set_seed, get_top_attention_heads, load_gpt_model_and_tokenizer
-from src.utils.prompt_helper import load_json_dataset, tokenize_ICL
+from src.utils.prompt_helper import load_json_dataset, tokenize_ICL, randomize_dataset
 from src.intervention import replace_heads_w_avg
 
 
 
-def evaluate_tv_zeroshot(
+def evaluate_tv_kshot(
     mean_activation: torch.tensor,
     top_heads: list[tuple[int, int]],
     model,
     tokenizer,
     config,
     prompts_from_dataset,
-    print_examples: bool = True,
+    corrupted_ICL: bool = False,
+    ICL_examples: int = 0,
+    print_examples = True,
 ):
+    """Evaluate the original and edited model with the task vector. Can perform evaluation for zero-shot ICL examples and 
+    k-shot corrupted ICL examples, according to the `corrupted_ICL` parameter.
+
+    Args:
+        mean_activation (torch.tensor): average activations extracted
+        top_heads (list[tuple[int, int]]): list of tuples each containing the layer and head index to be replaced with the average activation (task vector)
+        model (_type_): HuggingFace model
+        tokenizer (_type_): AutoTokenizer
+        config (_type_): Config from the load function
+        prompts_from_dataset (_type_): evaluation subset from the dataset
+        corrupted_ICL (bool, optional): If false evaluation is carried out with zero-shots prompt, if True a corrupted ICL prompt is used instead. Defaults to False.
+        ICL_examples (int, optional): Number of ICL examples (final query excluded) to be used for corrupted ICL prompts. Must be > 0 if `corrupted_ICL` is True. Defaults to 0.
+        print_examples (bool, optional): whether to print a result subset at the end. Defaults to True.
+    """
+
+    assert ICL_examples > 0 if corrupted_ICL else True, f'ICL_examples must be > 0 for corrupted ICL examples. {ICL_examples} were given.'
+    assert ICL_examples == 0 if not corrupted_ICL else True, f'ICL_examples must be 0 when using corrupted_ICL = False (zero-shot evaluation) {ICL_examples} were given.'
+
+    # shuffle dataset
+    if corrupted_ICL:
+        prompts_from_dataset = randomize_dataset(prompts_from_dataset)
+
     all_tokenized_prompt, all_important_ids, all_correct_labels = tokenize_ICL(
         tokenizer=tokenizer,
-        ICL_examples=0,
+        ICL_examples=ICL_examples,
         dataset=prompts_from_dataset,
     )
     # tokenizer correct labels and get the first token
     all_correct_labels = torch.tensor(
         [tokenizer(label)['input_ids'][0] for label in all_correct_labels]
     )
+
 
     # original forward pass
     probs_original = {
@@ -93,6 +118,8 @@ def evaluate_tv_zeroshot(
 
 
 
+
+
 def main(
     model_name: str,
     dataset_name: str,
@@ -120,7 +147,7 @@ def main(
 
     idx_for_eval = random.sample(range(len(dataset)), eval_dim)
 
-    evaluate_tv_zeroshot(
+    evaluate_tv_kshot(
         mean_activation=mean_activations,
         top_heads=top_heads,
         model=model,
