@@ -65,7 +65,7 @@ def evaluate_tv_kshot(
     pbar = tqdm(
         zip(all_tokenized_prompt, all_correct_labels),
         total=len(all_tokenized_prompt),
-        desc='Zero-shot forward pass on original model',
+        desc='[x] Zero-shot forward pass on original model',
     )
     for prompt, gold_token in pbar:
         # keeping batchsize = 1 for semplicity
@@ -102,8 +102,8 @@ def evaluate_tv_kshot(
         probs_edited['top_x_tokens'].append(torch.topk(softmaxed, k=5, axis=-1)[1].tolist())
 
     if print_examples: 
-        # print out results
-        for idx, prompt in enumerate(all_tokenized_prompt):
+        # print out results subset
+        for idx, prompt in enumerate([all_tokenized_prompt[i] for i in random.sample(range(len(all_tokenized_prompt)), 10)]):
             print('Prompt: ' + tokenizer.decode(prompt, skip_special_tokens = True).replace("\n", " "))
             print(f'  Gold: "{tokenizer.decode(all_correct_labels[idx])}"')
             print(f'  Original out:')
