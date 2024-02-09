@@ -93,7 +93,7 @@ def tokenize_ICL(tokenizer, ICL_examples: int, dataset: list[tuple[str, str]]):
         dataset (list[tuple[str, str, optional str]]): list of tuples (query, answer) default or (query, wrong_answer, correct_answer) if the labels are shufflet to trick the model
 
     Returns:
-        tuple[list[torch.LongTensor], list[list[int]]]: tokenied prompt and important ids for each prompt
+        tuple[list[torch.LongTensor], list[list[int]], list[str]]: tokenied prompt and important ids for each prompt
     """
     assert len(dataset) > ICL_examples, f'dataset dimension ({len(dataset)}) is <= ICL_examples ({ICL_examples})'
 
@@ -135,7 +135,7 @@ def randomize_dataset(dataset):
         dataset (_type_): _description_
 
     Returns:
-        _type_: _description_
+        list[tuple[str, str, str]]: dataset with the (query, random label, correct label)
     """
     shuffled = list(map(lambda x: x[1], dataset))
     random.shuffle(shuffled)

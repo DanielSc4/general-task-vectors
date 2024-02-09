@@ -12,3 +12,4 @@ nohup*
 
 *.out
 logs
+debug.py
