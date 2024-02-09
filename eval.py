@@ -138,10 +138,10 @@ def evaluate_tv_kshot(
 
 
     if print_examples:
-        # print out 10% of the dataset
+        # print out min(10, 10% of the dataset) examples
         idx_to_print = random.sample(
             range(len(all_tokenized_prompt)),
-            int(np.ceil(0.1 * len(all_correct_labels)))
+            min(10, int(np.ceil(0.1 * len(all_correct_labels)))),
         )
         
         for idx, prompt in enumerate([
