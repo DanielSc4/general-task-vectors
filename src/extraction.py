@@ -1,6 +1,8 @@
+from typing import Any
+from nnsight import LanguageModel
 import torch
 import numpy as np
-from transformers import AutoModelForCausalLM
+from transformers import AutoModelForCausalLM, PreTrainedTokenizer
 from tqdm import tqdm
 
 from .utils.model_utils import rsetattr, rgetattr
@@ -96,9 +98,9 @@ def extract_activations(
 def get_mean_activations(
         tokenized_prompts: list[torch.Tensor], 
         important_ids: list[int],
-        tokenizer: AutoTokenizer,
-        model: AutoModelForCausalLM, 
-        config: dict[str, any],
+        tokenizer: PreTrainedTokenizer,
+        model: LanguageModel, 
+        config: dict[str, Any],
         correct_labels: list[str],
         device: str,
     ):

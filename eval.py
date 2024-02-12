@@ -37,7 +37,7 @@ def evaluate_tv_kshot(
     model,
     tokenizer,
     config,
-    prompts_from_dataset,
+    prompts_from_dataset: list[tuple[str, str]],
     corrupted_ICL: bool = False,
     ICL_examples: int = 0,
     print_examples = True,
@@ -128,7 +128,7 @@ def evaluate_tv_kshot(
     accuracy_original = calculate_accuracy(probs_original, all_correct_labels, top_k_accuracy=True)
     accuracy_edited = calculate_accuracy(probs_edited, all_correct_labels, top_k_accuracy=True)
     
-    print('\n--- Results ---')
+    print('\n------ Results ------')
     print(f'[v] Accuracy of the original model: {accuracy_original["accuracy"]:.2f}')
     print(f'[v]   top {len(probs_original["top_k_tokens"][0])} accuracy: {accuracy_original["top_k_accuracy"]:.2f}')
 
@@ -137,6 +137,7 @@ def evaluate_tv_kshot(
     print()
 
 
+    print('\n------ Examples ------')
     if print_examples:
         # print out min(10, 10% of the dataset) examples
         idx_to_print = random.sample(
