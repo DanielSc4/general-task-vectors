@@ -84,7 +84,11 @@ def tokenize_from_template(tokenizer, promtp_w_template: tuple[tuple[str, str]] 
     return full_tokenized, indexes
 
 
-def tokenize_ICL(tokenizer, ICL_examples: int, dataset: list[tuple[str, str]]):
+def tokenize_ICL(
+    tokenizer, 
+    ICL_examples: int, 
+    dataset: list[tuple[str, ...]],
+):
     """build ICL prompt from the dataset, tokenize them and return the tokenized prompt with the important ids.
 
     Args:

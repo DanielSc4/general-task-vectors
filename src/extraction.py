@@ -109,7 +109,7 @@ def get_mean_activations(
         correct_labels: list[str],
         device: str,
         multi_token_generation: bool = False,
-        evaluator: Evaluator = None,
+        evaluator: Evaluator | None = None,
     ):
     """Compute the average of all the model's activation on the provided prompts
 
