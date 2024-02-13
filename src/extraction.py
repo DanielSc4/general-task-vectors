@@ -5,9 +5,10 @@ import numpy as np
 from transformers import PreTrainedTokenizer
 from tqdm import tqdm
 
+from src.utils.output_evaluation import Evaluator
+
 from .utils.model_utils import rsetattr, rgetattr
 from .utils.prompt_helper import find_missing_ranges
-from transformers import AutoTokenizer
 
 
 
@@ -49,7 +50,7 @@ def extract_activations(
         config: dict[str, Any],
         tokenizer: PreTrainedTokenizer,
         device: str,
-        multi_token_generation: bool | int = False,
+        multi_token_generation: bool = False,
     ):
     """Extract the activation and the output produced from the model using the tokenized prompts provided
 
@@ -59,7 +60,7 @@ def extract_activations(
         config (dict[str, any]): model's config
         tokenizer (AutoTokenizer): HuggingFace tokenizer
         device (str): device
-        multi_token_generation (bool | int): Allow for multi token generation. If False the model will generate 1 token, else the `n` token specified. Default to False.
+        multi_token_generation (bool | int): Allow for multi token generation. If False the model will generate 1 token. Default to False.
 
     Returns:
         tuple[list[torch.Tensor], list[torch.Tensor]]: tuple corresponding to the activations and the model output
@@ -70,7 +71,7 @@ def extract_activations(
     pbar = tqdm(tokenized_prompts, total = len(tokenized_prompts), desc = '[x] Extracting activations')
     for prompt in pbar:
         with model.generate(
-            max_new_tokens=1 if not multi_token_generation else multi_token_generation, 
+            max_new_tokens=1 if not multi_token_generation else None,       # TODO None shold be unconstrained generation? 
             pad_token_id=tokenizer.pad_token_id,
         ) as generator:
             prompt = prompt.to(device)
@@ -107,7 +108,8 @@ def get_mean_activations(
         config: dict[str, Any],
         correct_labels: list[str],
         device: str,
-        multi_token_generation: bool | int = False,
+        multi_token_generation: bool = False,
+        evaluator: Evaluator = None,
     ):
     """Compute the average of all the model's activation on the provided prompts
 
@@ -119,13 +121,13 @@ def get_mean_activations(
         config (dict[str, any]): model's config
         correct_labels (list[str]): list of correct labels for each ICL prompt
         device (str): device
-        multi_token_generation (bool | int): Allow for multi token generation. If False the model will generate 1 token, else the `n` token specified. Default to False.
+        multi_token_generation (bool | int): Allow for multi token generation. If False the model will generate 1 token. Default to False.
+        evaluator (Evaluator): Required if multi_token_generation is active. Defines an evaluation strategy. Default to None.
 
     Returns:
         torch.Tensor: mean of activations (`n_layers, n_heads, seq_len, d_head`)
     """
-
-    assert multi_token_generation is not True, "If you want to use multi-token generation please specify the number of max_tokens"
+    assert evaluator is not None if multi_token_generation else True, 'When multi_token_generation is True, an evaluator is required'
 
     activations, outputs = extract_activations(
         tokenized_prompts=tokenized_prompts, 
@@ -147,20 +149,19 @@ def get_mean_activations(
         )
 
     if multi_token_generation:
-        print(f'tokenized prompts len == len output {len(outputs) == len(tokenized_prompts)}')
-        print(f'len first tokenized prompt: {tokenized_prompts[0].shape}')
-        print(f'first outputs len: {outputs[0].shape}')
         only_output_tokens = []
         for original_prompt, output in zip(tokenized_prompts, outputs):
             # take only the generated tokens (from len of original_prompt to the end)
             only_output_tokens.append(
-                output.squeeze().cpu()[: - original_prompt.shape[0]]
+                output.squeeze().cpu()[- original_prompt.shape[0] :]
             )
-        only_output_tokens = np.array(only_output_tokens)
+            # TODO, considera quelli corretti solo sotto una certa soglia di safety ?
+            # ottieni la safety da qui
+            evaluation_results = evaluator.get_evaluation(prompts=only_output_tokens)
     else:
         # considering only the first token to evaluate the output
-        only_output_tokens = np.array(list(map(lambda x: x.squeeze()[-1].item(), outputs)))
-        only_labels_tokens = np.array([ele[0] for ele in tokenizer(correct_labels)['input_ids']])
+        only_output_tokens = torch.tensor(list(map(lambda x: x.squeeze()[-1].item(), outputs)))
+        only_labels_tokens = torch.tensor([ele[0] for ele in tokenizer(correct_labels)['input_ids']])
 
         correct_idx = (only_output_tokens == only_labels_tokens)
         accuracy = correct_idx.sum() / len(correct_idx)
