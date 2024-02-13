@@ -2,7 +2,7 @@ from typing import Any
 from nnsight import LanguageModel
 import torch
 import numpy as np
-from transformers import AutoModelForCausalLM, PreTrainedTokenizer
+from transformers import PreTrainedTokenizer
 from tqdm import tqdm
 
 from .utils.model_utils import rsetattr, rgetattr
@@ -45,10 +45,11 @@ def split_activation(activations, config):
 
 def extract_activations(
         tokenized_prompts: list[torch.Tensor], 
-        model: AutoModelForCausalLM, 
-        config: dict[str, any],
-        tokenizer: AutoTokenizer,
+        model: LanguageModel, 
+        config: dict[str, Any],
+        tokenizer: PreTrainedTokenizer,
         device: str,
+        multi_token_generation: bool | int = False,
     ):
     """Extract the activation and the output produced from the model using the tokenized prompts provided
 
@@ -58,23 +59,26 @@ def extract_activations(
         config (dict[str, any]): model's config
         tokenizer (AutoTokenizer): HuggingFace tokenizer
         device (str): device
+        multi_token_generation (bool | int): Allow for multi token generation. If False the model will generate 1 token, else the `n` token specified. Default to False.
 
     Returns:
         tuple[list[torch.Tensor], list[torch.Tensor]]: tuple corresponding to the activations and the model output
     """
+
+
     dataset_activations, outputs = [], []
     pbar = tqdm(tokenized_prompts, total = len(tokenized_prompts), desc = '[x] Extracting activations')
     for prompt in pbar:
-        with model.generate(max_new_tokens=1, pad_token_id=tokenizer.pad_token_id) as generator:
+        with model.generate(
+            max_new_tokens=1 if not multi_token_generation else multi_token_generation, 
+            pad_token_id=tokenizer.pad_token_id,
+        ) as generator:
             prompt = prompt.to(device)
             # invoke works in a generation context, where operations on inputs and outputs are tracked
             with generator.invoke(prompt) as invoker:
                 layer_attn_activations = []
                 for layer_i in range(len(config['attn_hook_names'])):
                     pbar.set_description(f"[x] Extracting activations (layer: {layer_i:02d}/{len(config['attn_hook_names'])})")
-                    # print(config['attn_hook_names'][layer_i])
-                    # print(rgetattr(model, config['attn_hook_names'][layer_i]).input.shape)
-                    # print(rgetattr(model, config['attn_hook_names'][layer_i]).input[0][0].shape)
                     layer_attn_activations.append(
                         rgetattr(model, config['attn_hook_names'][layer_i]).input[0][0].save()       # before: *_i]).output.save() 
                     )
@@ -103,6 +107,7 @@ def get_mean_activations(
         config: dict[str, Any],
         correct_labels: list[str],
         device: str,
+        multi_token_generation: bool | int = False,
     ):
     """Compute the average of all the model's activation on the provided prompts
 
@@ -114,16 +119,21 @@ def get_mean_activations(
         config (dict[str, any]): model's config
         correct_labels (list[str]): list of correct labels for each ICL prompt
         device (str): device
+        multi_token_generation (bool | int): Allow for multi token generation. If False the model will generate 1 token, else the `n` token specified. Default to False.
 
     Returns:
         torch.Tensor: mean of activations (`n_layers, n_heads, seq_len, d_head`)
     """
+
+    assert multi_token_generation is not True, "If you want to use multi-token generation please specify the number of max_tokens"
+
     activations, outputs = extract_activations(
         tokenized_prompts=tokenized_prompts, 
         model=model, 
         config=config,
         tokenizer=tokenizer,
         device=device,
+        multi_token_generation = multi_token_generation,
     )
 
     # move tensors to CPU for memory issues
@@ -136,17 +146,29 @@ def get_mean_activations(
             [filter_activations(activations[i], important_ids[i]) for i in range(len(activations))]
         )
 
-    # considering only the first token to evaluate the output
-    only_output_tokens = np.array(list(map(lambda x: x.squeeze()[-1].item(), outputs)))
-    only_labels_tokens = np.array([ele[0] for ele in tokenizer(correct_labels)['input_ids']])
-
-    correct_idx = (only_output_tokens == only_labels_tokens)
-    accuracy = correct_idx.sum() / len(correct_idx)
-    if correct_idx.sum() > 0:
-        print(f'[x] Model accuracy: {accuracy:.2f}, using {correct_idx.sum()} (out of {len(correct_idx)}) examples to compute mean activations')
+    if multi_token_generation:
+        print(f'tokenized prompts len == len output {len(outputs) == len(tokenized_prompts)}')
+        print(f'len first tokenized prompt: {tokenized_prompts[0].shape}')
+        print(f'first outputs len: {outputs[0].shape}')
+        only_output_tokens = []
+        for original_prompt, output in zip(tokenized_prompts, outputs):
+            # take only the generated tokens (from len of original_prompt to the end)
+            only_output_tokens.append(
+                output.squeeze().cpu()[: - original_prompt.shape[0]]
+            )
+        only_output_tokens = np.array(only_output_tokens)
     else:
-        print(f'[x] Model accuracy is 0, mean_activations cannot be computed!')
-        raise ValueError("Activations cannot be computed when model accuracy is 0%")
+        # considering only the first token to evaluate the output
+        only_output_tokens = np.array(list(map(lambda x: x.squeeze()[-1].item(), outputs)))
+        only_labels_tokens = np.array([ele[0] for ele in tokenizer(correct_labels)['input_ids']])
+
+        correct_idx = (only_output_tokens == only_labels_tokens)
+        accuracy = correct_idx.sum() / len(correct_idx)
+        if correct_idx.sum() > 0:
+            print(f'[x] Model accuracy: {accuracy:.2f}, using {correct_idx.sum()} (out of {len(correct_idx)}) examples to compute mean activations')
+        else:
+            print(f'[x] Model accuracy is 0, mean_activations cannot be computed!')
+            raise ValueError("Activations cannot be computed when model accuracy is 0%")
 
     # using only activations from correct prediction to compute the mean_activations
     correct_activations = activations_clean[correct_idx]

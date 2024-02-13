@@ -1,4 +1,5 @@
 from typing import Any
+from nnsight import LanguageModel
 import torch
 from tqdm import tqdm
 import numpy as np
@@ -20,6 +21,18 @@ def filter_activations(activation, important_ids):
     activation = activation[:, :, important_ids]
     return activation
 
+
+def simple_forward_pass(
+        model = LanguageModel,
+        prompt = torch.Tensor,
+    ):
+    # keeping batchsize = 1 for semplicity
+    # clean model
+    with model.invoke(prompt) as invoker:
+        pass    # no action required
+    logits = invoker.output.logits[:, -1, :]    # getting only the predicted token (i.e. final token), keeping batchsize and vocab_size
+    softmaxed = logits.softmax(dim=-1)
+    return softmaxed
 
 def replace_heads_w_avg(
         tokenized_prompt: torch.tensor, 

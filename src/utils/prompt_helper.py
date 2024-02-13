@@ -127,12 +127,14 @@ def tokenize_ICL(tokenizer, ICL_examples: int, dataset: list[tuple[str, str]]):
     return tokenized, ids, labels
 
 
-def randomize_dataset(dataset: list[tuple[str, str]]):
+def randomize_dataset(
+        dataset: list[tuple[str, str]]
+    ):
     """shuffle the second column (labels) and copy the original column to a third one keeping the correct label
     e.g. for antonym: (good, bad) -> (good, funny, bad)
 
     Args:
-        dataset (list[tuple[str, str]]): dataset with labels to shuffle 
+        dataset (list[tuple[str, str]] | list[tuple[str, str]]): dataset with labels to shuffle 
 
     Returns:
         list[tuple[str, str, str]]: dataset with the (query, random label, correct label)

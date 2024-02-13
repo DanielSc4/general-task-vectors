@@ -9,7 +9,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from src.utils.model_utils import load_gpt_model_and_tokenizer, set_seed 
+from src.utils.model_utils import load_model_and_tokenizer, set_seed 
 from src.extraction import get_mean_activations
 from src.utils.prompt_helper import tokenize_ICL, load_json_dataset
 from src.intervention import compute_indirect_effect
@@ -57,7 +57,7 @@ def main(
     set_seed(32)
 
     # load model, tokenizer and config
-    model, tokenizer, config, device = load_gpt_model_and_tokenizer(model_name, load_in_8bit)
+    model, tokenizer, config, device = load_model_and_tokenizer(model_name, load_in_8bit)
 
     print(f'{model_name} on {device} device')
     

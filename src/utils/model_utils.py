@@ -28,7 +28,7 @@ def get_device():
     return device
 
 
-def load_gpt_model_and_tokenizer(
+def load_model_and_tokenizer(
         model_name: str,
         load_in_8bit: bool = False,
 ):
@@ -258,7 +258,7 @@ def get_top_attention_heads(
     sorted_coordinates_list = sorted(
         coordinates_list, 
         key=lambda x: cie[x[0], x[1]], 
-        reverse=True
+        reverse=True,
     )
     return sorted_coordinates_list
 

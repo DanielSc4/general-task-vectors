@@ -6,9 +6,9 @@ from tqdm import tqdm
 import numpy as np
 
 
-from src.utils.model_utils import set_seed, get_top_attention_heads, load_gpt_model_and_tokenizer
+from src.utils.model_utils import set_seed, get_top_attention_heads, load_model_and_tokenizer
 from src.utils.prompt_helper import load_json_dataset, tokenize_ICL, randomize_dataset
-from src.intervention import replace_heads_w_avg
+from src.intervention import replace_heads_w_avg, simple_forward_pass
 
 def calculate_accuracy(probs: dict[str, list], labels: list, top_k_accuracy: bool | int = False):
     # probs fileds:
@@ -32,7 +32,7 @@ def calculate_accuracy(probs: dict[str, list], labels: list, top_k_accuracy: boo
 
 
 def evaluate_tv_kshot(
-    mean_activation: torch.tensor,
+    mean_activation: torch.Tensor,
     top_heads: list[tuple[int, int]],
     model,
     tokenizer,
@@ -97,11 +97,8 @@ def evaluate_tv_kshot(
     )
     for prompt, imp_ids, gold_token in pbar:
         # keeping batchsize = 1 for semplicity
-        # clean model
-        with model.invoke(prompt) as invoker:
-            pass    # no action required
-        logits = invoker.output.logits[:, -1, :]    # getting only the predicted token (i.e. final token), keeping batchsize and vocab_size
-        softmaxed = logits.softmax(dim=-1).cpu().squeeze()
+        softmaxed = simple_forward_pass(model=model, prompt=prompt).cpu().squeeze()
+
         probs_original['argmax_token'].append(softmaxed.argmax().item())
         probs_original['argmax_token_prob'].append(softmaxed[softmaxed.argmax()].item())
         probs_original['gold_token_prob'].append(softmaxed[gold_token].item())
@@ -198,7 +195,7 @@ def main(
     set_seed(32)
 
     # load model, tokenizer and config
-    model, tokenizer, config, device = load_gpt_model_and_tokenizer(model_name, load_in_8bit)
+    model, tokenizer, config, device = load_model_and_tokenizer(model_name, load_in_8bit)
 
     print(f'[x] Loading mean_activations')
     mean_activations = torch.load(mean_activation_path).to(device)
