@@ -5,7 +5,7 @@ import numpy as np
 from transformers import PreTrainedTokenizer
 from tqdm import tqdm
 
-from src.utils.output_evaluation import Evaluator
+from src.utils.eval.multi_token_evaluator import Evaluator
 
 from .utils.model_utils import rsetattr, rgetattr
 from .utils.prompt_helper import find_missing_ranges
@@ -71,7 +71,7 @@ def extract_activations(
     pbar = tqdm(tokenized_prompts, total = len(tokenized_prompts), desc = '[x] Extracting activations')
     for prompt in pbar:
         with model.generate(
-            max_new_tokens=1 if not multi_token_generation else None,       # TODO None shold be unconstrained generation? 
+            max_new_tokens=1 if not multi_token_generation else 200,       # TODO None shold be unconstrained generation? 
             pad_token_id=tokenizer.pad_token_id,
         ) as generator:
             prompt = prompt.to(device)
@@ -153,11 +153,14 @@ def get_mean_activations(
         for original_prompt, output in zip(tokenized_prompts, outputs):
             # take only the generated tokens (from len of original_prompt to the end)
             only_output_tokens.append(
-                output.squeeze().cpu()[- original_prompt.shape[0] :]
+                output.squeeze().cpu()[- original_prompt.shape[0] :].unsqueeze(0)   # adding batchsize dim = 1
             )
-            # TODO, considera quelli corretti solo sotto una certa soglia di safety ?
-            # ottieni la safety da qui
-            evaluation_results = evaluator.get_evaluation(prompts=only_output_tokens)
+            # detokenize prompt the get the evaluation
+            # TODO fix the issue with detokenization
+            detokenized_outputs = [
+                tokenizer.decode(ele, skip_special_tokens=True) for ele in only_output_tokens
+            ]
+            evaluation_results = evaluator.get_evaluation(prompts=detokenized_outputs)
             evaluation_results = torch.tensor(evaluation_results)
             # suppopsing label == 1 -> negative output (so, using torch.ones)
             correct_idx = (evaluation_results == torch.ones(evaluation_results.shape[0]))
