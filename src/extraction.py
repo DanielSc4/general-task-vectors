@@ -127,7 +127,6 @@ def get_mean_activations(
     Returns:
         torch.Tensor: mean of activations (`n_layers, n_heads, seq_len, d_head`)
     """
-    assert evaluator is not None if multi_token_generation else True, 'When multi_token_generation is True, an evaluator is required'
 
     activations, outputs = extract_activations(
         tokenized_prompts=tokenized_prompts, 
@@ -149,6 +148,7 @@ def get_mean_activations(
         )
 
     if multi_token_generation:
+        assert evaluator is not None, 'When using multi_token_generation an evaluator is required'
         only_output_tokens = []
         for original_prompt, output in zip(tokenized_prompts, outputs):
             # take only the generated tokens (from len of original_prompt to the end)
@@ -158,6 +158,12 @@ def get_mean_activations(
             # TODO, considera quelli corretti solo sotto una certa soglia di safety ?
             # ottieni la safety da qui
             evaluation_results = evaluator.get_evaluation(prompts=only_output_tokens)
+            evaluation_results = torch.tensor(evaluation_results)
+            # suppopsing label == 1 -> negative output (so, using torch.ones)
+            correct_idx = (evaluation_results == torch.ones(evaluation_results.shape[0]))
+            
+            print(f'[x] taking {correct_idx.sum()} examples out of {evaluation_results.shape[0]}')
+
     else:
         # considering only the first token to evaluate the output
         only_output_tokens = torch.tensor(list(map(lambda x: x.squeeze()[-1].item(), outputs)))
