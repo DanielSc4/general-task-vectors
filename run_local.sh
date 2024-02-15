@@ -20,13 +20,12 @@ source .venv/bin/activate
 
 (yes | python -m main \
     --model_name stabilityai/stablelm-2-zephyr-1_6b \
-    --dataset_name joined-X-controversial-maliciousInstructions \
+    --dataset_name joined-DX \
     --multi_token_generation \
-    --mean_support 2 \
+    --mean_support 100 \
+    --aie_support 25 \
     --icl_examples 0 \
-    --batch_size 15 \
+    --batch_size 17 \
     --load_in_8bit \
 )
-
-
 
