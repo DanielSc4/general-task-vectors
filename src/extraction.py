@@ -156,10 +156,10 @@ def get_mean_activations(
                 output.squeeze().cpu()[- original_prompt.shape[0] :].unsqueeze(0)   # adding batchsize dim = 1
             )
             # detokenize prompt the get the evaluation
-            # TODO fix the issue with detokenization
             detokenized_outputs = [
-                tokenizer.decode(ele, skip_special_tokens=True) for ele in only_output_tokens
+                tokenizer.decode(ele.squeeze(), skip_special_tokens=True) for ele in only_output_tokens
             ]
+            print(detokenized_outputs)
             evaluation_results = evaluator.get_evaluation(prompts=detokenized_outputs)
             evaluation_results = torch.tensor(evaluation_results)
             # suppopsing label == 1 -> negative output (so, using torch.ones)

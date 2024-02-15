@@ -24,7 +24,7 @@ source .venv/bin/activate
     --multi_token_generation \
     --mean_support 2 \
     --icl_examples 0 \
-    --batch_size 22 \
+    --batch_size 15 \
     --load_in_8bit \
 )
 

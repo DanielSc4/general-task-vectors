@@ -37,7 +37,6 @@ class Evaluator(object):
         with torch.no_grad():
             for prompt in tqdm(tokenized_prompts, leave = False, desc = '[x] evaluating output', total = len(prompts)):
                 prompt = prompt.to(self.device)
-                print(prompt)
                 logits = self.evaluation_model(**prompt).logits
                 prob = logits.softmax(-1)
                 prob = prob.squeeze()
