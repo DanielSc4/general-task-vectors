@@ -35,7 +35,7 @@ def simple_forward_pass(
     return softmaxed
 
 def replace_heads_w_avg(
-        tokenized_prompt: torch.Tensor, 
+        tokenized_prompt: dict[str, torch.Tensor], 
         important_ids: list[list[int]], 
         layers_heads: list[tuple[int, int]], 
         avg_activations: list[torch.Tensor], 
@@ -48,7 +48,7 @@ def replace_heads_w_avg(
     Than compute the output (softmaxed logits) of the model with all the new activations.
 
     Args:
-        tokenized_prompt (torch.tensor): tokenized prompt
+        tokenized_prompt (dict[str, torch.Tensor]): tokenized prompt
         important_ids (list[list[int]]): list of important indexes i.e. the tokens where the average must be substituted
         layers_heads (list[tuple[int, int]]): list of tuples each containing a layer index, head index
         avg_activations (list[torch.tensor]): list of activations (`size: (seq_len, d_head)`) for each head listed in layers_heads. The length must be the same of layers_heads
