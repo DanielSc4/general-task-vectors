@@ -168,23 +168,28 @@ def get_mean_activations(
 
     if multi_token_generation:
         assert evaluator is not None, 'Evaluator object is required when using multi token generation'
+
         only_output_tokens = []
         for original_prompt, output in zip(tokenized_prompts, all_outputs):
             # take only the generated tokens (from len of original_prompt to the end)
             only_output_tokens.append(
-                output.squeeze().cpu()[- original_prompt.shape[0] :].unsqueeze(0)   # adding batchsize dim = 1 TODO: c'è bisogno di farlo davvero?
+                output.squeeze()[- original_prompt.shape[0] :].unsqueeze(0)   # adding batchsize dim = 1 TODO: c'è bisogno di farlo davvero?
             )
-            # detokenize prompt the get the evaluation
-            detokenized_outputs = [
-                tokenizer.decode(ele.squeeze(), skip_special_tokens=True) for ele in only_output_tokens
-            ]
-            print(detokenized_outputs)
-            evaluation_results = evaluator.get_evaluation(prompts=detokenized_outputs)
-            evaluation_results = torch.tensor(evaluation_results)
-            # suppopsing label == 1 -> negative output (so, using torch.ones)
-            correct_idx = (evaluation_results == torch.ones(evaluation_results.shape[0]))
+        # detokenize prompt the get the evaluation
+        detokenized_outputs = [
+            tokenizer.decode(ele.squeeze(), skip_special_tokens=True) for ele in only_output_tokens
+        ]
+
+        evaluation_results = evaluator.get_evaluation(texts=detokenized_outputs)
+        evaluation_results = torch.tensor(evaluation_results)
+
+        # assuming label == 1 -> negative output (i.e. using torch.ones)
+        correct_idx = (evaluation_results == torch.ones(evaluation_results.shape[0]))
             
+        if correct_idx.sum() > 0:
             print(f'[x] taking {correct_idx.sum()} examples out of {evaluation_results.shape[0]}')
+        else:
+            raise ValueError("Activations cannot be computed when no output has label 1")
     else:
         # getting the output token
         only_output_tokens = all_outputs[:, -1]
