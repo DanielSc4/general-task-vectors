@@ -167,13 +167,12 @@ def get_mean_activations(
     all_outputs = torch.vstack(all_outputs)             # [batch, seq]
 
     if multi_token_generation:
-        assert evaluator is not None, 'When using multi_token_generation an evaluator is required'
+        assert evaluator is not None, 'Evaluator object is required when using multi token generation'
         only_output_tokens = []
-        # TODO: fix original prompt size (per selezionare solo gli output_tokens) non è corretta visto che ora effettuo il pad del prompt
-        for original_prompt, output in zip(tokenized_prompts, outputs):
+        for original_prompt, output in zip(tokenized_prompts, all_outputs):
             # take only the generated tokens (from len of original_prompt to the end)
             only_output_tokens.append(
-                output.squeeze().cpu()[- original_prompt.shape[0] :].unsqueeze(0)   # adding batchsize dim = 1
+                output.squeeze().cpu()[- original_prompt.shape[0] :].unsqueeze(0)   # adding batchsize dim = 1 TODO: c'è bisogno di farlo davvero?
             )
             # detokenize prompt the get the evaluation
             detokenized_outputs = [
@@ -197,7 +196,6 @@ def get_mean_activations(
         if correct_idx.sum() > 0:
             print(f'[x] Model accuracy: {accuracy:.2f}, using {correct_idx.sum()} (out of {len(correct_idx)}) examples to compute mean activations')
         else:
-            print(f'[x] Model accuracy is 0, mean_activations cannot be computed!')
             raise ValueError("Activations cannot be computed when model accuracy is 0%")
 
         # using only activations from correct prediction to compute the mean_activations
