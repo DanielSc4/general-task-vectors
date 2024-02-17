@@ -136,7 +136,8 @@ def get_mean_activations(
 
     for start_index in (pbar := tqdm(
         range(0, len(tokenized_prompts), batch_size), 
-        total = int(np.ceil(len(tokenized_prompts) / batch_size))
+        total = int(np.ceil(len(tokenized_prompts) / batch_size)),
+        desc = '[x] Extracting activations',
     )):
 
         end_index = min(start_index + batch_size, len(tokenized_prompts))
