@@ -157,7 +157,7 @@ def randomize_dataset(
 
 
 
-def pad_input_and_ids(tokenized_prompts, important_ids: list[int], max_len = 256, pad_token_id = 50256):
+def pad_input_and_ids(tokenized_prompts, important_ids: list[int], max_len = 256, pad_token_id: int | None = 50256):
     """pad a batched input 
 
     Args:

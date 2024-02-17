@@ -18,6 +18,8 @@ source .venv/bin/activate
 
 
 
+# (yes | python -m main --model_name stabilityai/stablelm-2-zephyr-1_6b --dataset_name antonym --icl_examples 10 --batch_size 18 --load_in_8bit)
+
 (yes | python -m main \
     --model_name stabilityai/stablelm-2-zephyr-1_6b \
     --dataset_name joined-DX \

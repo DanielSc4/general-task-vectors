@@ -24,18 +24,18 @@ class Evaluator(object):
     
     def get_evaluation(
         self, 
-        prompts: list[str],
+        texts: list[str],
         softmaxed: bool = False,
     ) -> list[int | float]:
         """
         Evaluates a list of prompts with the specified model. Returns 1 if the the output is dangerous/wrong/..., 0 otherwise.
         Can return the softmaxed value io softmaxed = True (Default: False)
         """
-        tokenized_prompts = self.tokenize(prompts)
+        tokenized_prompts = self.tokenize(texts)
 
         models_outputs = []
         with torch.no_grad():
-            for prompt in tqdm(tokenized_prompts, leave = False, desc = '[x] evaluating output', total = len(prompts)):
+            for prompt in tqdm(tokenized_prompts, leave = False, desc = '[x] evaluating output', total = len(texts)):
                 prompt = prompt.to(self.device)
                 logits = self.evaluation_model(**prompt).logits
                 prob = logits.softmax(-1)

@@ -91,6 +91,7 @@ def main(
             config=config,
             correct_labels=correct_labels,
             device=device,
+            batch_size=batch_size,
             multi_token_generation = multi_token_generation,
             evaluator = Evaluator() if multi_token_generation else None,
         )
