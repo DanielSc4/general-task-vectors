@@ -3,7 +3,6 @@ import torch
 from pathlib import Path
 import os
 import random
-import numpy as np
 
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import seaborn as sns
@@ -49,7 +48,6 @@ def main(
     path_to_mean_activations = os.path.join(path_to_output, f'{dataset_name}_mean_activations_{model_name.replace("/", "-")}_ICL{icl_examples}.pt')
     path_to_cie = os.path.join(path_to_output, f'{dataset_name}_cie_{model_name.replace("/", "-")}_ICL{icl_examples}.pt')
     path_to_output_generation = os.path.join(path_to_output, f'{dataset_name}_output.json')
- 
 
     if save_plot:
         Path('./output/plots').mkdir(parents=True, exist_ok=True)

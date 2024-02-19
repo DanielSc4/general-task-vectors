@@ -1,18 +1,26 @@
-{
-    "inputs": [
-        "Q:none\nA:all\n\nQ:unprepared\nA:prepared\n\nQ:normal\nA:abnormal\n\nQ:relieve\nA:",
-        "Q:organic\nA:inorganic\n\nQ:sender\nA:receiver\n\nQ:plain\nA:fancy\n\nQ:absolute\nA:",
-        "Q:honest\nA:dishonest\n\nQ:compassionate\nA:cruel\n\nQ:suffer\nA:enjoy\n\nQ:passive\nA:",
-        "Q:unified\nA:divided\n\nQ:faint\nA:loud\n\nQ:military\nA:civilian\n\nQ:minimize\nA:",
-        "Q:noble\nA:ignoble\n\nQ:citizen\nA:foreigner\n\nQ:inclined\nA:level\n\nQ:gloomy\nA:",
-        "Q:unacceptable\nA:acceptable\n\nQ:hind\nA:front\n\nQ:funny\nA:serious\n\nQ:verge\nA:"
-    ],
-    "outputs": [
-        ":recover\nA:recover\n\nQ:recover\nA:recover\n\nQ:recover\nA:recover\n\nQ:recover\nA:",
-        ":plain\nA:fancy\n\nQ:sender\nA:receiver\n\nQ:plain\nA:fancy\n\nQ:sender\nA:re",
-        ":passive\n\nA:passive\n\n\nQ:suffer\n\nA:enjoy\n\n\nQ:passive\n\nA:passive\n\n\nQ:suffer\n",
-        "Q:no\nA:no\n\nQ:no\nA:no\n\nQ:no\nA:no\n\nQ:no\nA:no\n\nQ:no\nA",
-        ":lazy\n\nA:lazy\n\n\nQ:lazy\n\nA:lazy\n\n\nQ:lazy\n\nA:lazy\n\n\nQ:lazy\n",
-        "funny\n\nQ:foolish\nA:funny\n\nQ:foolish\nA:funny\n\nQ:foolish\nA:funny"
-    ]
-}
+[
+    {
+        "input": "Q:encode\nA:decode\n\nQ:presents\nA:absence\n\nQ:functional\nA:dysfunctional\n\nQ:revolution\nA:",
+        "output": "Q:revolutionary\n\nQ:revolutionary\n\nQ:revolutionary\n\nQ:revolutionary\n\nQ:revolutionary\n\nQ:revolutionary\n\nQ:revolutionary\n\n\nQ"
+    },
+    {
+        "input": "Q:chill\nA:heat\n\nQ:childish\nA:mature\n\nQ:surface\nA:depth\n\nQ:unveil\nA:",
+        "output": "unveil\nA:depth\n\nQ:unveil\nA:depth\n\nQ:unveil\nA:depth\n\nQ:unveil\nA:"
+    },
+    {
+        "input": "Q:prohibit\nA:allow\n\nQ:modern\nA:traditional\n\nQ:usual\nA:unusual\n\nQ:amplify\nA:",
+        "output": "precision\nA:unusual\n\nQ:precision\nA:unusual\n\nQ:precision\nA:unusual\n\nQ:precision\nA:"
+    },
+    {
+        "input": "Q:domestic\nA:wild\n\nQ:common\nA:rare\n\nQ:left\nA:right\n\nQ:allow\nA:",
+        "output": ":allow\n\nQ:allow\nA:allow\n\nQ:allow\nA:allow\n\nQ:allow\nA:allow\n\nQ:allow\nA:"
+    },
+    {
+        "input": "Q:spread\nA:gather\n\nQ:row\nA:column\n\nQ:face\nA:back\n\nQ:deliberate\nA:",
+        "output": "ate\nA:column\n\nQ:deliberate\nA:column\n\nQ:deliberate\nA:column\n\nQ:deliberate\nA:"
+    },
+    {
+        "input": "Q:awkward\nA:graceful\n\nQ:pass\nA:fail\n\nQ:medical\nA:non-medical\n\nQ:attach\nA:",
+        "output": "\nA:trying to get a job\n\n\nQ:trying to get a job\n\nA:trying to get a job\n\n\nQ:trying to"
+    }
+]

@@ -136,13 +136,13 @@ def get_mean_activations(
     for start_index in (pbar := tqdm(
         range(0, len(tokenized_prompts), batch_size), 
         total = int(np.ceil(len(tokenized_prompts) / batch_size)),
-        desc = '[x] Extracting activations',
+        desc = '[x] Extracting activations batch',
     )):
 
         end_index = min(start_index + batch_size, len(tokenized_prompts))
         current_batch_size = end_index - start_index
 
-        current_batch_tokens, current_batch_important_ids = pad_input_and_ids(
+        current_batch_tokens, _ = pad_input_and_ids(
             tokenized_prompts = tokenized_prompts[start_index : end_index], 
             important_ids = important_ids[start_index : end_index],
             max_len = 256,
@@ -185,10 +185,13 @@ def get_mean_activations(
 
         # saves outpus
         if save_output_path:
-            json_to_write = {
-                "inputs": [tokenizer.decode(prompt, skip_special_tokens = True) for prompt in tokenized_prompts],
-                "outputs": detokenized_outputs
-            }
+            json_to_write = [
+                {
+                    "input": tokenizer.decode(prompt, skip_special_tokens = True),
+                    "output": output,
+                }
+                for prompt, output in zip(tokenized_prompts, detokenized_outputs)
+            ]
             with open(save_output_path, 'w+', encoding='utf-8') as f:
                 json.dump(json_to_write, f, indent=4)
 
