@@ -46,6 +46,11 @@ def main(
     path_to_output = f'./output/{model_name.split("/")[1]}'
     Path(path_to_output).mkdir(parents=True, exist_ok=True)
 
+    path_to_mean_activations = os.path.join(path_to_output, f'{dataset_name}_mean_activations_{model_name.replace("/", "-")}_ICL{icl_examples}.pt')
+    path_to_cie = os.path.join(path_to_output, f'{dataset_name}_cie_{model_name.replace("/", "-")}_ICL{icl_examples}.pt')
+    path_to_output_generation = os.path.join(path_to_output, f'{dataset_name}_output.json')
+ 
+
     if save_plot:
         Path('./output/plots').mkdir(parents=True, exist_ok=True)
 
@@ -76,8 +81,6 @@ def main(
     tok_ret, ids_ret, correct_labels = zip(*selected_examples)
 
     # get mean activations from the model (or stored ones if already exist)
-    path_to_mean_activations = f'{path_to_output}/{dataset_name}_mean_activations_{model_name.replace("/", "-")}_ICL{icl_examples}.pt'
-
     if os.path.isfile(path_to_mean_activations) and use_local_backups:
         print(f'[x] Found mean_activations at: {path_to_mean_activations}')
         mean_activations = torch.load(path_to_mean_activations)
@@ -92,15 +95,15 @@ def main(
             correct_labels=correct_labels,
             device=device,
             batch_size=batch_size,
-            multi_token_generation = multi_token_generation,
-            evaluator = Evaluator() if multi_token_generation else None,
+            multi_token_generation=multi_token_generation,
+            evaluator=Evaluator() if multi_token_generation else None,
+            save_output_path=path_to_output_generation,
         )
         # store mean_activations
         torch.save(mean_activations, path_to_mean_activations)
     
 
     # get mean activations from the model (or stored ones if already exist)
-    path_to_cie = f'{path_to_output}/{dataset_name}_cie_{model_name.replace("/", "-")}_ICL{icl_examples}.pt'
     if os.path.isfile(path_to_cie) and use_local_backups:
         print(f'[x] Found CIE at {path_to_cie}')
         cie = torch.load(path_to_cie)

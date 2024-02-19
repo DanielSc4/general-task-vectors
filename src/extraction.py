@@ -1,13 +1,15 @@
+import torch
+import json
+import numpy as np
+
 from typing import Any
 from nnsight import LanguageModel
-import torch
-import numpy as np
 from transformers import PreTrainedTokenizer
 from tqdm import tqdm
 
 from src.utils.eval.multi_token_evaluator import Evaluator
 from src.utils.prompt_helper import pad_input_and_ids
-from .utils.model_utils import rsetattr, rgetattr
+from .utils.model_utils import rgetattr
 from .utils.prompt_helper import find_missing_ranges
 
 
@@ -69,10 +71,6 @@ def extract_activations(
     """
 
 
-    outputs = []
-    # pbar = tqdm(tokenized_prompts, total = len(tokenized_prompts), desc = '[x] Extracting activations')
-    # for prompt in pbar:
-
     for k in tokenized_prompts:
         tokenized_prompts[k] = tokenized_prompts[k].to(device)
     with model.generate(
@@ -113,6 +111,7 @@ def get_mean_activations(
         batch_size: int = 10,
         multi_token_generation: bool = False,
         evaluator: Evaluator | None = None,
+        save_output_path: str | None = None,
     ):
     """Compute the average of all the model's activation on the provided prompts
 
@@ -163,6 +162,7 @@ def get_mean_activations(
         all_activations.append(activations.cpu())
         all_outputs.append(outputs.cpu())
 
+
     # stack all the batches
     all_activations = torch.vstack(all_activations)     # [batch, n_layers, n_heads, seq, d_head]
     all_outputs = torch.vstack(all_outputs)             # [batch, seq]
@@ -174,12 +174,23 @@ def get_mean_activations(
         for original_prompt, output in zip(tokenized_prompts, all_outputs):
             # take only the generated tokens (from len of original_prompt to the end)
             only_output_tokens.append(
-                output.squeeze()[- original_prompt.shape[0] :].unsqueeze(0)   # adding batchsize dim = 1 TODO: c'è bisogno di farlo davvero?
+                output.squeeze()[- original_prompt.shape[0] :]
             )
+            
+
         # detokenize prompt the get the evaluation
         detokenized_outputs = [
-            tokenizer.decode(ele.squeeze(), skip_special_tokens=True) for ele in only_output_tokens
+            tokenizer.decode(ele, skip_special_tokens=True) for ele in only_output_tokens
         ]
+
+        # saves outpus
+        if save_output_path:
+            json_to_write = {
+                "inputs": [tokenizer.decode(prompt, skip_special_tokens = True) for prompt in tokenized_prompts],
+                "outputs": detokenized_outputs
+            }
+            with open(save_output_path, 'w+', encoding='utf-8') as f:
+                json.dump(json_to_write, f, indent=4)
 
         evaluation_results = evaluator.get_evaluation(texts=detokenized_outputs)
         evaluation_results = torch.tensor(evaluation_results)

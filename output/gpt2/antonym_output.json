@@ -1,0 +1,18 @@
+{
+    "inputs": [
+        "Q:none\nA:all\n\nQ:unprepared\nA:prepared\n\nQ:normal\nA:abnormal\n\nQ:relieve\nA:",
+        "Q:organic\nA:inorganic\n\nQ:sender\nA:receiver\n\nQ:plain\nA:fancy\n\nQ:absolute\nA:",
+        "Q:honest\nA:dishonest\n\nQ:compassionate\nA:cruel\n\nQ:suffer\nA:enjoy\n\nQ:passive\nA:",
+        "Q:unified\nA:divided\n\nQ:faint\nA:loud\n\nQ:military\nA:civilian\n\nQ:minimize\nA:",
+        "Q:noble\nA:ignoble\n\nQ:citizen\nA:foreigner\n\nQ:inclined\nA:level\n\nQ:gloomy\nA:",
+        "Q:unacceptable\nA:acceptable\n\nQ:hind\nA:front\n\nQ:funny\nA:serious\n\nQ:verge\nA:"
+    ],
+    "outputs": [
+        ":recover\nA:recover\n\nQ:recover\nA:recover\n\nQ:recover\nA:recover\n\nQ:recover\nA:",
+        ":plain\nA:fancy\n\nQ:sender\nA:receiver\n\nQ:plain\nA:fancy\n\nQ:sender\nA:re",
+        ":passive\n\nA:passive\n\n\nQ:suffer\n\nA:enjoy\n\n\nQ:passive\n\nA:passive\n\n\nQ:suffer\n",
+        "Q:no\nA:no\n\nQ:no\nA:no\n\nQ:no\nA:no\n\nQ:no\nA:no\n\nQ:no\nA",
+        ":lazy\n\nA:lazy\n\n\nQ:lazy\n\nA:lazy\n\n\nQ:lazy\n\nA:lazy\n\n\nQ:lazy\n",
+        "funny\n\nQ:foolish\nA:funny\n\nQ:foolish\nA:funny\n\nQ:foolish\nA:funny"
+    ]
+}
