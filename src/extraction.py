@@ -219,9 +219,9 @@ def get_mean_activations(
             raise ValueError("Activations cannot be computed when model accuracy is 0%")
 
         # using only activations from correct prediction to compute the mean_activations
-        correct_activations = all_activations[correct_idx]
+    correct_activations = all_activations[correct_idx]
     
-    mean_activations = all_activations.mean(axis = 0)
+    mean_activations = correct_activations.mean(axis = 0)
     mean_activations = mean_activations.to(device)
     
     return mean_activations
