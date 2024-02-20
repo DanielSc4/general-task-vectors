@@ -5,6 +5,7 @@ from tqdm import tqdm
 import numpy as np
 import random
 
+from transformers import PreTrainedTokenizer
 from src.utils.model_utils import rgetattr
 from src.utils.prompt_helper import tokenize_ICL, randomize_dataset, pad_input_and_ids, find_missing_ranges
 
@@ -125,17 +126,54 @@ def replace_heads_w_avg(
     return output
 
 
+
+
+def compute_cie_single_token(
+    tokenizer: PreTrainedTokenizer,
+    config: dict[str, Any],
+    correct_labels,
+    probs_original,
+    probs_edited,
+
+):
+    """
+    Return the CIE matrix averaged accross all prompts, calculated as follow:
+    CIE(ij) = probability of correct_label token y (w/ edited model) - probability of correct_label token y (w/ original model). Some e.g.
+         e.g. CIE(ij) = 0.9 - 0.1 = 0.8      head has great effect
+         e.g. CIE(ij) = 0.3 - 0.1 = 0.2      head does not influence too much the output
+         e.g. CIE(ij) = 0.3 - 0.8 = -0.5     head contribute to the output in an inverse way
+    """
+    
+    correct_ids = list(map(lambda x: x[0], tokenizer(correct_labels)['input_ids']))
+
+    cie = torch.zeros([len(correct_ids), config['n_layers'], config['n_heads']])
+
+    for prompt_idx in range(len(correct_ids)):
+        for layer in range(config['n_layers']):
+            for head in range(config['n_heads']):
+                prob_correct_token_edited_model = probs_edited[
+                    prompt_idx, layer, head, correct_ids[prompt_idx]
+                ].item()
+                prob_correct_token_original_model = probs_original[
+                    prompt_idx, correct_ids[prompt_idx]
+                ].item()
+                cie[prompt_idx, layer, head] = prob_correct_token_edited_model - prob_correct_token_original_model
+
+
+    return cie.mean(dim=0)
+
+
 def compute_indirect_effect(
-        model,
-        tokenizer,
-        config: dict[str, Any],
-        dataset: list[tuple[str, str]],
-        mean_activations: torch.Tensor,
-        ICL_examples: int = 4,
-        batch_size: int = 32,
-        aie_support: int = 25,
-        multi_token_generation: bool = False,
-    ):
+    model,
+    tokenizer: PreTrainedTokenizer,
+    config: dict[str, Any],
+    dataset: list[tuple[str, str]],
+    mean_activations: torch.Tensor,
+    ICL_examples: int = 4,
+    batch_size: int = 32,
+    aie_support: int = 25,
+    multi_token_generation: bool = False,
+):
     """Compute indirect effect on the provided dataset by comparing the prediction of the original model
     to the predicition of the modified model. Specifically, for the modified model, each attention head
     activation is substituted with the corresponding mean_activation provided to measure the impacto 
@@ -196,8 +234,6 @@ def compute_indirect_effect(
         probs_original.append(
             simple_forward_pass(model, current_batch_tokens, multi_token_generation)
         )
-        print(f'from code: {probs_original[-1]}')
-        exit()
         # TODO: questa parte sopra è da rifare, assicurati di prendere last token if single token evaluation altrimenti valuta con evaluator
 
         # for each layer i, for each head j in the model save the vocab size in output
@@ -236,26 +272,15 @@ def compute_indirect_effect(
     probs_original = torch.vstack(probs_original)
     probs_edited = torch.vstack(probs_edited)
 
-    # CIE(ij) = probability of correct_label token y (w/ edited model) - probability of correct_label token y (w/ original model). Some e.g.
-    #      e.g. CIE(ij) = 0.9 - 0.1 = 0.8      head has great effect
-    #      e.g. CIE(ij) = 0.3 - 0.1 = 0.2      head does not influence too much the output
-    #      e.g. CIE(ij) = 0.3 - 0.8 = -0.5     head contribute to the output in an inverse way
 
-    # considering only the first generated id
-    correct_ids = list(map(lambda x: x[0], tokenizer(all_correct_labels)['input_ids']))
-
-    cie = torch.zeros([len(correct_ids), config['n_layers'], config['n_heads']])
-
-    for prompt_idx in range(len(correct_ids)):
-        for layer in range(config['n_layers']):
-            for head in range(config['n_heads']):
-                prob_correct_token_edited_model = probs_edited[
-                    prompt_idx, layer, head, correct_ids[prompt_idx]
-                ].item()
-                prob_correct_token_original_model = probs_original[
-                    prompt_idx, correct_ids[prompt_idx]
-                ].item()
-                cie[prompt_idx, layer, head] = prob_correct_token_edited_model - prob_correct_token_original_model
     
+    cie = compute_cie_single_token(
+        tokenizer=tokenizer,
+        config=config,
+        correct_labels=all_correct_labels,
+        probs_original=probs_original,
+        probs_edited=probs_edited,
+    )
     
-    return cie.mean(dim=0), probs_original, probs_edited
+    return cie, probs_original, probs_edited
+
