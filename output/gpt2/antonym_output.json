@@ -1,26 +1,32 @@
 [
     {
-        "input": "Q:encode\nA:decode\n\nQ:presents\nA:absence\n\nQ:functional\nA:dysfunctional\n\nQ:revolution\nA:",
-        "output": "Q:revolutionary\n\nQ:revolutionary\n\nQ:revolutionary\n\nQ:revolutionary\n\nQ:revolutionary\n\nQ:revolutionary\n\nQ:revolutionary\n\n\nQ"
+        "input": "Q:meaningless\nA:meaningful\n\nQ:inert\nA:active\n\nQ:veil\nA:reveal\n\nQ:feasible\nA:",
+        "output": "feasible\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fear",
+        "full": "Q:meaningless\nA:meaningful\n\nQ:inert\nA:active\n\nQ:veil\nA:reveal\n\nQ:feasible\nA:feasible\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fearless\nA:fearless\n\nQ:fear"
     },
     {
-        "input": "Q:chill\nA:heat\n\nQ:childish\nA:mature\n\nQ:surface\nA:depth\n\nQ:unveil\nA:",
-        "output": "unveil\nA:depth\n\nQ:unveil\nA:depth\n\nQ:unveil\nA:depth\n\nQ:unveil\nA:"
+        "input": "Q:unpopular\nA:popular\n\nQ:incompatible\nA:compatible\n\nQ:truth\nA:lie\n\nQ:succeed\nA:",
+        "output": "lie\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:",
+        "full": "Q:unpopular\nA:popular\n\nQ:incompatible\nA:compatible\n\nQ:truth\nA:lie\n\nQ:succeed\nA:lie\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:succeed\n\n\nQ:"
     },
     {
-        "input": "Q:prohibit\nA:allow\n\nQ:modern\nA:traditional\n\nQ:usual\nA:unusual\n\nQ:amplify\nA:",
-        "output": "precision\nA:unusual\n\nQ:precision\nA:unusual\n\nQ:precision\nA:unusual\n\nQ:precision\nA:"
+        "input": "Q:acceptable\nA:unacceptable\n\nQ:truthful\nA:deceptive\n\nQ:full\nA:empty\n\nQ:secondary\nA:",
+        "output": "unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:",
+        "full": "Q:acceptable\nA:unacceptable\n\nQ:truthful\nA:deceptive\n\nQ:full\nA:empty\n\nQ:secondary\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:unacceptable\n\nQ:unacceptable\nA:"
     },
     {
-        "input": "Q:domestic\nA:wild\n\nQ:common\nA:rare\n\nQ:left\nA:right\n\nQ:allow\nA:",
-        "output": ":allow\n\nQ:allow\nA:allow\n\nQ:allow\nA:allow\n\nQ:allow\nA:allow\n\nQ:allow\nA:"
+        "input": "Q:pull\nA:push\n\nQ:ancient\nA:modern\n\nQ:miniature\nA:giant\n\nQ:oxidation\nA:",
+        "output": "polaris\n\nQ:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polar",
+        "full": "Q:pull\nA:push\n\nQ:ancient\nA:modern\n\nQ:miniature\nA:giant\n\nQ:oxidation\nA:polaris\n\nQ:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polaris\nA:polar"
     },
     {
-        "input": "Q:spread\nA:gather\n\nQ:row\nA:column\n\nQ:face\nA:back\n\nQ:deliberate\nA:",
-        "output": "ate\nA:column\n\nQ:deliberate\nA:column\n\nQ:deliberate\nA:column\n\nQ:deliberate\nA:"
+        "input": "Q:impartial\nA:biased\n\nQ:unusual\nA:usual\n\nQ:sunrise\nA:sunset\n\nQ:opening\nA:",
+        "output": "opening\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sun",
+        "full": "Q:impartial\nA:biased\n\nQ:unusual\nA:usual\n\nQ:sunrise\nA:sunset\n\nQ:opening\nA:opening\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sunset\n\nQ:sunset\nA:sun"
     },
     {
-        "input": "Q:awkward\nA:graceful\n\nQ:pass\nA:fail\n\nQ:medical\nA:non-medical\n\nQ:attach\nA:",
-        "output": "\nA:trying to get a job\n\n\nQ:trying to get a job\n\nA:trying to get a job\n\n\nQ:trying to"
+        "input": "Q:inflation\nA:deflation\n\nQ:unfold\nA:fold\n\nQ:express\nA:suppress\n\nQ:northwestern\nA:",
+        "output": "northwestern\n\nQ:southwestern\nA:southwestern\n\nQ:western\nA:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western",
+        "full": "Q:inflation\nA:deflation\n\nQ:unfold\nA:fold\n\nQ:express\nA:suppress\n\nQ:northwestern\nA:northwestern\n\nQ:southwestern\nA:southwestern\n\nQ:western\nA:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western\n\nQ:western"
     }
 ]

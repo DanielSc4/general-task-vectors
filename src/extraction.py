@@ -109,6 +109,7 @@ def get_mean_activations(
         correct_labels: list[str],
         device: str,
         batch_size: int = 10,
+        max_len: int = 256,
         multi_token_generation: bool = False,
         evaluator: Evaluator | None = None,
         save_output_path: str | None = None,
@@ -123,12 +124,17 @@ def get_mean_activations(
         config (dict[str, any]): model's config
         correct_labels (list[str]): list of correct labels for each ICL prompt
         device (str): device
+        batch_size (int): batch size for the model. Default to 10.
+        max_len (int): max lenght of the prompt to be used (tokenizer parameter). Default to 256.
         multi_token_generation (bool | int): Allow for multi token generation. If False the model will generate 1 token. Default to False.
         evaluator (Evaluator): Required if multi_token_generation is active. Defines an evaluation strategy. Default to None.
+        save_output_path (str | None): output path to save the model generation (useful when using multi_token_generation). Default to None.
 
     Returns:
         torch.Tensor: mean of activations (`n_layers, n_heads, seq_len, d_head`)
+
     """
+
 
     all_activations = []
     all_outputs = []
@@ -145,10 +151,10 @@ def get_mean_activations(
         current_batch_tokens, _ = pad_input_and_ids(
             tokenized_prompts = tokenized_prompts[start_index : end_index], 
             important_ids = important_ids[start_index : end_index],
-            max_len = 256,
+            max_len = max_len,
             pad_token_id = tokenizer.eos_token_id,
         )
-
+        
         activations, outputs = extract_activations(
             tokenized_prompts=current_batch_tokens, 
             model=model, 
@@ -170,13 +176,8 @@ def get_mean_activations(
     if multi_token_generation:
         assert evaluator is not None, 'Evaluator object is required when using multi token generation'
 
-        only_output_tokens = []
-        for original_prompt, output in zip(tokenized_prompts, all_outputs):
-            # take only the generated tokens (from len of original_prompt to the end)
-            only_output_tokens.append(
-                output.squeeze()[- original_prompt.shape[0] :]
-            )
-            
+        # take only the generated tokens (from len of original_prompt to the end)
+        only_output_tokens = [output.squeeze()[max_len:] for output in all_outputs]
 
         # detokenize prompt the get the evaluation
         detokenized_outputs = [
@@ -187,10 +188,10 @@ def get_mean_activations(
         if save_output_path:
             json_to_write = [
                 {
-                    "input": tokenizer.decode(prompt, skip_special_tokens = True),
+                    "input": tokenizer.decode(prompt, skip_special_tokens=True),
                     "output": output,
                 }
-                for prompt, output in zip(tokenized_prompts, detokenized_outputs)
+                for prompt, output, full_output in zip(tokenized_prompts, detokenized_outputs, all_outputs)
             ]
             with open(save_output_path, 'w+', encoding='utf-8') as f:
                 json.dump(json_to_write, f, indent=4)
