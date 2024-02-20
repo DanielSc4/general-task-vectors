@@ -162,7 +162,6 @@ def replace_heads_w_avg(
 
 
 
-
 def compute_cie_single_token(
     tokenizer: PreTrainedTokenizer,
     config: dict[str, Any],
@@ -268,10 +267,13 @@ def compute_indirect_effect(
         probs_original.append(
             simple_forward_pass(model, current_batch_tokens, multi_token_generation)
         )
-        # TODO: questa parte sopra è da rifare, assicurati di prendere last token if single token evaluation altrimenti valuta con evaluator
 
         # for each layer i, for each head j in the model save the vocab size in output
-        edited = torch.zeros([current_batch_size, config['n_layers'], config['n_heads'], config['vocab_size']])
+        if multi_token_generation:
+            # inventati una strutta dati
+            edited = torch.zeros([current_batch_size, config['n_layers'], config['n_heads']])       # nessun vocab_size, registra direttamente il valore restituito dall'evaluator.
+        else:
+            edited = torch.zeros([current_batch_size, config['n_layers'], config['n_heads'], config['vocab_size']])
 
         inner_bar_layers = tqdm(
            range(config['n_layers']),
@@ -298,7 +300,7 @@ def compute_indirect_effect(
                     model=model,
                     config=config,
                 )
-                # TODO: qui returned è shape [batch, seq]. Se single token prendi last element for each batch, altrimenti solita evaluation
+                # TODO: qui returned è shape [batch, vocab_size]. Modifica aggiungendo la parte con evaluation
                 edited[:, layer_i, head_j, :] = returned
             
         probs_edited.append(edited.cpu())
