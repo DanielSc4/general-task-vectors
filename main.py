@@ -3,22 +3,22 @@ import torch
 from pathlib import Path
 import os
 import random
-import numpy as np
 
 from transformers import AutoModelForCausalLM, AutoTokenizer
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-from src.utils.model_utils import load_gpt_model_and_tokenizer, set_seed 
+from src.utils.model_utils import load_model_and_tokenizer, set_seed 
 from src.extraction import get_mean_activations
 from src.utils.prompt_helper import tokenize_ICL, load_json_dataset
 from src.intervention import compute_indirect_effect
-
+from src.utils.eval.multi_token_evaluator import Evaluator
 
 def main(
     model_name: str = 'gpt2',
     load_in_8bit: bool = False,
     dataset_name: str = 'following',
+    multi_token_generation: bool = False,
     icl_examples: int = 4,
     batch_size: int = 12,
     mean_support: int = 100,
@@ -45,6 +45,10 @@ def main(
     path_to_output = f'./output/{model_name.split("/")[1]}'
     Path(path_to_output).mkdir(parents=True, exist_ok=True)
 
+    path_to_mean_activations = os.path.join(path_to_output, f'{dataset_name}_mean_activations_{model_name.replace("/", "-")}_ICL{icl_examples}.pt')
+    path_to_cie = os.path.join(path_to_output, f'{dataset_name}_cie_{model_name.replace("/", "-")}_ICL{icl_examples}.pt')
+    path_to_output_generation = os.path.join(path_to_output, f'{dataset_name}_output.json')
+
     if save_plot:
         Path('./output/plots').mkdir(parents=True, exist_ok=True)
 
@@ -57,7 +61,7 @@ def main(
     set_seed(32)
 
     # load model, tokenizer and config
-    model, tokenizer, config, device = load_gpt_model_and_tokenizer(model_name, load_in_8bit)
+    model, tokenizer, config, device = load_model_and_tokenizer(model_name, load_in_8bit)
 
     print(f'{model_name} on {device} device')
     
@@ -66,6 +70,7 @@ def main(
         tokenizer, ICL_examples = icl_examples, dataset = dataset,
     )
     # create a subset with mean_support elements
+    print(f'[x] New dataset dimension after ICL: {len(tok_ret)}')
     idx_for_mean = random.sample(range(len(tok_ret)), mean_support)
     selected_examples = [
         (tok_ret[i], ids_ret[i], correct_labels[i])
@@ -74,8 +79,6 @@ def main(
     tok_ret, ids_ret, correct_labels = zip(*selected_examples)
 
     # get mean activations from the model (or stored ones if already exist)
-    path_to_mean_activations = f'{path_to_output}/{dataset_name}_mean_activations_{model_name.replace("/", "-")}_ICL{icl_examples}.pt'
-
     if os.path.isfile(path_to_mean_activations) and use_local_backups:
         print(f'[x] Found mean_activations at: {path_to_mean_activations}')
         mean_activations = torch.load(path_to_mean_activations)
@@ -89,13 +92,16 @@ def main(
             config=config,
             correct_labels=correct_labels,
             device=device,
+            batch_size=batch_size,
+            multi_token_generation=multi_token_generation,
+            evaluator=Evaluator() if multi_token_generation else None,
+            save_output_path=path_to_output_generation,
         )
         # store mean_activations
         torch.save(mean_activations, path_to_mean_activations)
     
 
     # get mean activations from the model (or stored ones if already exist)
-    path_to_cie = f'{path_to_output}/{dataset_name}_cie_{model_name.replace("/", "-")}_ICL{icl_examples}.pt'
     if os.path.isfile(path_to_cie) and use_local_backups:
         print(f'[x] Found CIE at {path_to_cie}')
         cie = torch.load(path_to_cie)

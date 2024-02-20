@@ -1,4 +1,5 @@
 from typing import Any
+from nnsight import LanguageModel
 import torch
 from tqdm import tqdm
 import numpy as np
@@ -21,11 +22,23 @@ def filter_activations(activation, important_ids):
     return activation
 
 
+def simple_forward_pass(
+        model = LanguageModel,
+        prompt = torch.Tensor,
+    ):
+    # keeping batchsize = 1 for semplicity
+    # clean model
+    with model.invoke(prompt) as invoker:
+        pass    # no action required
+    logits = invoker.output.logits[:, -1, :]    # getting only the predicted token (i.e. final token), keeping batchsize and vocab_size
+    softmaxed = logits.softmax(dim=-1)
+    return softmaxed
+
 def replace_heads_w_avg(
-        tokenized_prompt: torch.tensor, 
-        important_ids: list[int], 
+        tokenized_prompt: dict[str, torch.Tensor], 
+        important_ids: list[list[int]], 
         layers_heads: list[tuple[int, int]], 
-        avg_activations: list[torch.tensor], 
+        avg_activations: list[torch.Tensor], 
         model, 
         config,
         last_token_only: bool = True,
@@ -35,8 +48,8 @@ def replace_heads_w_avg(
     Than compute the output (softmaxed logits) of the model with all the new activations.
 
     Args:
-        tokenized_prompt (torch.tensor): tokenized prompt
-        important_ids (list[int]): list of important indexes i.e. the tokens where the average must be substituted
+        tokenized_prompt (dict[str, torch.Tensor]): tokenized prompt
+        important_ids (list[list[int]]): list of important indexes i.e. the tokens where the average must be substituted
         layers_heads (list[tuple[int, int]]): list of tuples each containing a layer index, head index
         avg_activations (list[torch.tensor]): list of activations (`size: (seq_len, d_head)`) for each head listed in layers_heads. The length must be the same of layers_heads
         model (): model

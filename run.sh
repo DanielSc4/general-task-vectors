@@ -21,7 +21,7 @@ nvidia-smi
 python -m main --model_name microsoft/phi-2 --dataset_name antonym --icl_examples 4 --batch_size 32 --load_in_8bit
 python -m main --model_name microsoft/phi-2 --dataset_name sentiment --icl_examples 4 --batch_size 32 --load_in_8bit
 
-(yes | python -m main --model_name stabilityai/stablelm-2-zephyr-1_6b --dataset_name antonym --icl_examples 10 --batch_size 32 --load_in_8bit )
+(yes | python -m main --model_name stabilityai/stablelm-2-zephyr-1_6b --dataset_name antonym --icl_examples 10 --batch_size 32 --load_in_8bit)
 
 # python -m main --model_name EleutherAI/pythia-1B --dataset_name sentiment --icl_examples 4 --batch_size 32 --load_in_8bit
 # performance notes

@@ -84,7 +84,11 @@ def tokenize_from_template(tokenizer, promtp_w_template: tuple[tuple[str, str]] 
     return full_tokenized, indexes
 
 
-def tokenize_ICL(tokenizer, ICL_examples: int, dataset: list[tuple[str, str]]):
+def tokenize_ICL(
+    tokenizer, 
+    ICL_examples: int, 
+    dataset: list[tuple[str, ...]],
+):
     """build ICL prompt from the dataset, tokenize them and return the tokenized prompt with the important ids.
 
     Args:
@@ -127,12 +131,14 @@ def tokenize_ICL(tokenizer, ICL_examples: int, dataset: list[tuple[str, str]]):
     return tokenized, ids, labels
 
 
-def randomize_dataset(dataset: list[tuple[str, str]]):
+def randomize_dataset(
+        dataset: list[tuple[str, str]]
+    ):
     """shuffle the second column (labels) and copy the original column to a third one keeping the correct label
     e.g. for antonym: (good, bad) -> (good, funny, bad)
 
     Args:
-        dataset (list[tuple[str, str]]): dataset with labels to shuffle 
+        dataset (list[tuple[str, str]] | list[tuple[str, str]]): dataset with labels to shuffle 
 
     Returns:
         list[tuple[str, str, str]]: dataset with the (query, random label, correct label)
@@ -151,7 +157,7 @@ def randomize_dataset(dataset: list[tuple[str, str]]):
 
 
 
-def pad_input_and_ids(tokenized_prompts, important_ids: list[int], max_len = 256, pad_token_id = 50256):
+def pad_input_and_ids(tokenized_prompts, important_ids: list[int], max_len = 256, pad_token_id: int | None = 50256):
     """pad a batched input 
 
     Args:
