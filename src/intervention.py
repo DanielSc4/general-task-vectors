@@ -48,16 +48,57 @@ def simple_forward_pass(
     return ret
 
 
+
+def replace_heads_w_avg_multi_token(
+    tokenized_prompt: dict[str, torch.Tensor],
+    important_ids: list[list[int]],
+    layers_heads: list[tuple[int, int]], 
+    avg_activations: list[torch.Tensor], 
+    model, 
+    config,
+) -> torch.Tensor:
+    """
+    Same as `replace_heads_w_avg` but for multi token generation. Here last_token_only is default since prompt can change in length
+    """
+        
+    assert len(layers_heads) == len(avg_activations), f'layers_heads and avg_activations must have the same length. Got {len(layers_heads)} and {len(avg_activations)}'
+
+    d_head = config['d_model'] // config['n_heads']
+
+    """
+    Developer note: here avg_activations is a list of activations for each head to change
+        if calcultaing AIE, the length of the list is 1.
+    """
+
+    with model.generate() as generator:
+        with generator.invoke(tokenized_prompt) as invoker:
+            for idx, (num_layer, num_head) in enumerate(layers_heads):
+                
+                attention_head_values = rgetattr(model, config['attn_hook_names'][num_layer]).input[0][0][
+                    :, :, (num_head * d_head) : ((num_head + 1) * d_head)
+                ]
+
+                for prompt_idx, prompt_imp_ids in zip(
+                    range(attention_head_values.shape[0]), 
+                    important_ids,
+                ):
+                    attention_head_values[prompt_idx][      # shape: [seq (256), d_head]
+                        prompt_imp_ids[-1], :
+                    ] = avg_activations[idx][-1]     # shape: [seq (1 (the -1 pos.), d_model)] pos. 255 aka 256-th token (when max_len = 256)
+
+    return generator.output
+
+
+
 def replace_heads_w_avg(
-        tokenized_prompt: dict[str, torch.Tensor], 
-        important_ids: list[list[int]], 
-        layers_heads: list[tuple[int, int]], 
-        avg_activations: list[torch.Tensor], 
-        model, 
-        config,
-        last_token_only: bool = True,
-        multi_token_generaiton: bool = False,
-    ):
+    tokenized_prompt: dict[str, torch.Tensor], 
+    important_ids: list[list[int]], 
+    layers_heads: list[tuple[int, int]], 
+    avg_activations: list[torch.Tensor], 
+    model, 
+    config,
+    last_token_only: bool = True,
+) -> torch.Tensor:
     """Replace the activation of specific head(s) (listed in `layers_heads`) with the avg_activation for each 
     specific head (listed in `avg_activations`) only in `important_ids` positions. 
     Than compute the output (softmaxed logits) of the model with all the new activations.
@@ -73,7 +114,7 @@ def replace_heads_w_avg(
             If False, every important_id with the mean_activation and mutli tokens word takes the mean activation from their last token activation. Defaults: True.
 
     Returns:
-        torch.Tensor: model's probabilities over vocab (post-softmax) with the replaced activations
+        torch.Tensor: model's probabilities over vocab (post-softmax) with the replaced activations with shape (batch, vocab_size)
     """
     assert len(layers_heads) == len(avg_activations), f'layers_heads and avg_activations must have the same length. Got {len(layers_heads)} and {len(avg_activations)}'
 
@@ -83,45 +124,39 @@ def replace_heads_w_avg(
     Developer note: here avg_activations is a list of activations for each head to change
         if calcultaing AIE, the length of the list is 1.
     """
-    with model.generate(
-        max_new_tokens = 1 if not multi_token_generaiton else 200,
-    ) as generator:
-        with generator.invoke(tokenized_prompt) as invoker:
-            for idx, (num_layer, num_head) in enumerate(layers_heads):
-                # select the head (output shape is torch.Size([batch, seq_len, d_model]))
-                
-                # https://github.com/huggingface/transformers/blob/224ab70969d1ac6c549f0beb3a8a71e2222e50f7/src/transformers/models/gpt2/modeling_gpt2.py#L341
-                # shape: tuple[output from the attention module (hidden state), present values (cache), attn_weights] 
-                # (taking 0-th value)
-                # new shape: torch.size([batchsize, seq_len(256 if max len), hidden_size])
-                attention_head_values = rgetattr(model, config['attn_hook_names'][num_layer]).input[0][0][
-                    :, :, (num_head * d_head) : ((num_head + 1) * d_head)
-                ]
-                # for each prompt in batch and important ids of that prompt
-                # substitute with the mean activation (unsqueeze for adding the batch dimension)
-                for prompt_idx, prompt_imp_ids in zip(
-                    range(attention_head_values.shape[0]), 
-                    important_ids,
-                ):
-                    if last_token_only:
-                        attention_head_values[prompt_idx][      # shape: [seq (256), d_head]
-                            prompt_imp_ids[-1], :
-                        ] = avg_activations[idx][-1]     # shape: [seq (1 (the -1 pos.), d_model)] pos. 255 aka 256-th token (when max_len = 256)
-                    else:
-                        # replace important ids with the mean activations
-                        attention_head_values[prompt_idx][prompt_imp_ids] = avg_activations[idx].unsqueeze(0)
-                        to_avg = find_missing_ranges(prompt_imp_ids)
-                        # replace non important ids (i.e. other tokens of the same word) with the same values (avg of the token activation)
-                        for n_interval in range(len(to_avg)):
-                            # calculate range where the substitution must take place (e.g. from [2, 5] to [2, 3, 4])
-                            range_where_replace = list(range(*to_avg[n_interval]))
-                            for token_col in range_where_replace:
-                                # replace with the token emb. with the avg taken from the last token of the word emb. 
-                                # explaination: (for ele in [2, 3, 4] replace with the values in col 5, (same as range_where_replace[-1] + 1))
-                                attention_head_values[prompt_idx][token_col] = attention_head_values[prompt_idx][to_avg[n_interval][-1]]
+    with model.invoke(tokenized_prompt) as invoker:
+        for idx, (num_layer, num_head) in enumerate(layers_heads):
+            # https://github.com/huggingface/transformers/blob/224ab70969d1ac6c549f0beb3a8a71e2222e50f7/src/transformers/models/gpt2/modeling_gpt2.py#L341
+            # shape: tuple[output from the attention module (hidden state, ), present values (cache), attn_weights] (taking 0-th value)
+            # new shape: torch.size([batchsize, seq_len(256 if max len), hidden_size])
+            attention_head_values = rgetattr(model, config['attn_hook_names'][num_layer]).input[0][0][
+                :, :, (num_head * d_head) : ((num_head + 1) * d_head)
+            ]
+            # for each prompt in batch and important ids of that prompt
+            # substitute with the mean activation (unsqueeze for adding the batch dimension)
+            for prompt_idx, prompt_imp_ids in zip(
+                range(attention_head_values.shape[0]), 
+                important_ids,
+            ):
+                if last_token_only:
+                    attention_head_values[prompt_idx][      # shape: [seq (256), d_head]
+                        prompt_imp_ids[-1], :
+                    ] = avg_activations[idx][-1]     # shape: [seq (1 (the -1 pos.), d_model)] pos. 255 aka 256-th token (when max_len = 256)
+                else:
+                    # replace important ids with the mean activations
+                    attention_head_values[prompt_idx][prompt_imp_ids] = avg_activations[idx].unsqueeze(0)
+                    to_avg = find_missing_ranges(prompt_imp_ids)
+                    # replace non important ids (i.e. other tokens of the same word) with the same values (avg of the token activation)
+                    for n_interval in range(len(to_avg)):
+                        # calculate range where the substitution must take place (e.g. from [2, 5] to [2, 3, 4])
+                        range_where_replace = list(range(*to_avg[n_interval]))
+                        for token_col in range_where_replace:
+                            # replace with the token emb. with the avg taken from the last token of the word emb. 
+                            # explaination: (for ele in [2, 3, 4] replace with the values in col 5, (same as range_where_replace[-1] + 1))
+                            attention_head_values[prompt_idx][token_col] = attention_head_values[prompt_idx][to_avg[n_interval][-1]]
         
     # store the output probability
-    output = generator.output       # shape: [batch, seq]
+    output = invoker.output.logits[:,-1,:].softmax(dim=-1)
 
     return output
 
@@ -211,18 +246,17 @@ def compute_indirect_effect(
 
     # probabilities over vocab from the original model
     probs_original = [] # torch.zeros([len(randomized_dataset), config['vocab_size']])
-    probs_edited = []   # torch.zeros([len(all_tokenized_prompt), config['n_layers'], config['n_heads'], config['vocab_size']])
+    probs_edited = []   # torch.zeros([len(all_tokenized_prompt), config['n_layers'], config['n_heads'], config['vocab_size'] or len(generated_output)])
 
     for start_index in (pbar := tqdm(
         range(0, len(all_tokenized_prompt), batch_size), 
         total = int(np.ceil(len(all_tokenized_prompt) / batch_size))
     )):
-
         end_index = min(start_index + batch_size, len(all_tokenized_prompt))
         current_batch_size = end_index - start_index
 
         current_batch_tokens, current_batch_important_ids = pad_input_and_ids(
-            tokenized_prompts = all_tokenized_prompt[start_index : end_index], 
+            tokenized_prompts = all_tokenized_prompt[start_index : end_index],
             important_ids = all_important_ids[start_index : end_index],
             max_len = 256,
             pad_token_id = tokenizer.eos_token_id,
@@ -272,15 +306,16 @@ def compute_indirect_effect(
     probs_original = torch.vstack(probs_original)
     probs_edited = torch.vstack(probs_edited)
 
-
-    
-    cie = compute_cie_single_token(
-        tokenizer=tokenizer,
-        config=config,
-        correct_labels=all_correct_labels,
-        probs_original=probs_original,
-        probs_edited=probs_edited,
-    )
+    if multi_token_generation:
+        cie = 0     # todo
+    else:
+        cie = compute_cie_single_token(
+            tokenizer=tokenizer,
+            config=config,
+            correct_labels=all_correct_labels,
+            probs_original=probs_original,
+            probs_edited=probs_edited,
+        )
     
     return cie, probs_original, probs_edited
 
