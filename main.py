@@ -78,6 +78,13 @@ def main(
     ]
     tok_ret, ids_ret, correct_labels = zip(*selected_examples)
 
+
+    if multi_token_generation:
+        evaluator = Evaluator()
+    else:
+        evaluator = None
+
+
     # get mean activations from the model (or stored ones if already exist)
     if os.path.isfile(path_to_mean_activations) and use_local_backups:
         print(f'[x] Found mean_activations at: {path_to_mean_activations}')
@@ -94,7 +101,7 @@ def main(
             device=device,
             batch_size=batch_size,
             multi_token_generation=multi_token_generation,
-            evaluator=Evaluator() if multi_token_generation else None,
+            evaluator=evaluator if multi_token_generation else None,
             save_output_path=path_to_output_generation,
         )
         # store mean_activations
@@ -117,6 +124,8 @@ def main(
             ICL_examples = icl_examples,
             batch_size=batch_size,
             aie_support=aie_support,
+            multi_token_generation=multi_token_generation,
+            evaluator=evaluator if multi_token_generation else None,
         )
         torch.save(cie, path_to_cie)
         print('[x] CIE output saved')

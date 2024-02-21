@@ -7,7 +7,33 @@ class Evaluator(object):
     def __init__(
         self, 
         evaluation_model_name: str = 'facebook/roberta-hate-speech-dynabench-r4-target',
+        positive_label: int | None = None,
+        negative_label: int | None = None,
     ) -> None:
+        """
+        Create an evaluator with a specifed model.
+
+        Note that, when using unknown models you have to specify both the positive and negative label as
+        ant integer indicating the output position. 
+        E.g. the models returns `[0.99, 0.01]` as a calssification result of a toxic sentence than the
+        `negative_label` parameter corresponds to 0 and the `positive_label` parameter corresponds to 1.
+        """
+        known_models = {
+            'roberta-hate-speech-dynabench-r4-target': { 'positive_label': 0, 'negative_label': 1},
+        }
+
+        model_is_known = False
+        for model in known_models.keys():
+            if model in evaluation_model_name:
+                model_is_known = True
+                self.positive_label = known_models[model]['positive_label']
+                self.negative_label = known_models[model]['negative_label']
+
+        if not model_is_known:
+            if positive_label and negative_label:
+                self.positive_label, self.negative_label = positive_label, negative_label
+            else:
+                raise NotImplementedError("The specified model is not known, please specify positive_label and negative_label when creating the Evaluator")
 
         self.evaluation_model = AutoModelForSequenceClassification.from_pretrained(evaluation_model_name, device_map = 'auto')
         self.tokenizer = AutoTokenizer.from_pretrained(evaluation_model_name)
@@ -26,10 +52,16 @@ class Evaluator(object):
         self, 
         texts: list[str],
         softmaxed: bool = False,
-    ) -> list[int | float]:
+    ) -> list[torch.Tensor]:
         """
         Evaluates a list of prompts with the specified model. Returns 1 if the the output is dangerous/wrong/..., 0 otherwise.
         Can return the softmaxed value io softmaxed = True (Default: False)
+
+        Returns:
+            list[torch.Tensor] list (len = len(texts)), where each element is: 
+            - tensor([0.99, 0.01]) if softmaxed, 
+            - tensor(0 | 1) if softmaxed is False (argmax of the softmaxed value). 
+
         """
         tokenized_prompts = self.tokenize(texts)
 
@@ -41,10 +73,11 @@ class Evaluator(object):
                 prob = logits.softmax(-1)
                 prob = prob.squeeze()
                 prob = prob.cpu()
-                if not softmaxed:
-                    models_outputs.append(prob.argmax())
-                else:
+                if softmaxed:
                     models_outputs.append(prob)
+                else:
+                    # get the argmax value
+                    models_outputs.append(prob.argmax())
                 
         return models_outputs
 
