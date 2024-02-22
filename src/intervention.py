@@ -376,7 +376,7 @@ def compute_indirect_effect(
                 for head in range(config['n_heads']):
                     cie[prompt_idx, layer, head] = probs_edited[prompt_idx, layer, head] - probs_original[prompt_idx]
 
-            cie = cie.mean(dim=0)
+        cie = cie.mean(dim=0)
     else:
         cie = compute_cie_single_token(
             tokenizer=tokenizer,

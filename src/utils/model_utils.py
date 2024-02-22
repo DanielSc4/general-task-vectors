@@ -146,25 +146,25 @@ def load_model_and_tokenizer(
             ],
         }
 
-    elif 'zephyr' or 'stablelm' in model_name.lower():
-        if 'stablelm-2-zephyr' in model_name.lower():
-            model = LanguageModel(
-                model_name,
-                device_map=device if not load_in_8bit else {'':0}, 
-                # tokenizer=tok,
-                load_in_8bit=load_in_8bit,
-                # config = conf,
-            )
-            # model.config = conf # needed, idk why
-            print('[x] Loading model manually to fix trust_remote_code issue when loading')
-        else:
-            model = LanguageModel(
-                model_name, 
-                device_map=device if not load_in_8bit else {'':0}, 
-                trust_remote_code = True, 
-                load_in_8bit=load_in_8bit,
-                torch_dtype=torch.bfloat16 if not load_in_8bit else torch.float32,
-            )
+    elif 'zephyr' or 'stablelm' or 'gemma' in model_name.lower():
+        # if 'stablelm-2-zephyr' in model_name.lower():
+        #     model = LanguageModel(
+        #         model_name,
+        #         device_map=device if not load_in_8bit else {'':0}, 
+        #         # tokenizer=tok,
+        #         load_in_8bit=load_in_8bit,
+        #         # config = conf,
+        #     )
+        #     # model.config = conf # needed, idk why
+        #     print('[x] Loading model manually to fix trust_remote_code issue when loading')
+        # else:
+        model = LanguageModel(
+            model_name, 
+            device_map=device if not load_in_8bit else {'':0}, 
+            trust_remote_code = True, 
+            load_in_8bit=load_in_8bit,
+            torch_dtype=torch.bfloat16 if not load_in_8bit else torch.float32,
+        )
         std_CONFIG = {
             'n_heads': model.config.num_attention_heads,
             'n_layers': model.config.num_hidden_layers,
