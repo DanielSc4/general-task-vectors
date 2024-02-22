@@ -184,20 +184,21 @@ def get_mean_activations(
             tokenizer.decode(ele, skip_special_tokens=True) for ele in only_output_tokens
         ]
 
+        evaluation_results = evaluator.get_evaluation(texts=detokenized_outputs)
+        evaluation_results = torch.tensor(evaluation_results)
+
         # saves outpus
         if save_output_path:
             json_to_write = [
                 {
                     "input": tokenizer.decode(prompt, skip_special_tokens=True),
                     "output": output,
+                    "output_label": assigned_label.item(),
                 }
-                for prompt, output, full_output in zip(tokenized_prompts, detokenized_outputs, all_outputs)
+                for prompt, output, assigned_label in zip(tokenized_prompts, detokenized_outputs, evaluation_results)
             ]
             with open(save_output_path, 'w+', encoding='utf-8') as f:
                 json.dump(json_to_write, f, indent=4)
-
-        evaluation_results = evaluator.get_evaluation(texts=detokenized_outputs)
-        evaluation_results = torch.tensor(evaluation_results)
 
         # assuming label == 1 -> negative output (i.e. using torch.ones)
         correct_idx = (evaluation_results == torch.ones(evaluation_results.shape[0]))
