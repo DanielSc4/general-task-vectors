@@ -27,6 +27,7 @@ def simple_forward_pass(
         model: LanguageModel,
         prompt: torch.Tensor | dict[str, torch.Tensor],
         multi_token_generation: bool = False,
+        pad_token_id: int | None = None,
     ) -> torch.Tensor:
     """
     Perform a single forward pass with no intervention. Return a tensor [batch, vocab_size] if multi_token_generation is False, [batch, full_output_len] if multi_token_generation.
@@ -34,7 +35,9 @@ def simple_forward_pass(
     # TODO: check whether this two if statement can be a single operation using the generation context but getting the vocab size for the first token only
     if multi_token_generation:
         # use generate function and return the full output
-        with model.generate() as generator:
+        with model.generate(
+            pad_token_id=pad_token_id,
+        ) as generator:
             with generator.invoke(prompt) as invoker:
                 pass
         ret = generator.output
@@ -57,7 +60,7 @@ def replace_heads_w_avg_multi_token(
     model: LanguageModel, 
     config: dict[str, Any],
     pad_token_id: int,
-    use_batch_1: bool = True,
+    no_batch: bool = True,
 ) -> torch.Tensor:
     """
     Same as `replace_heads_w_avg` but for multi token generation. Here last_token_only is default since prompt can change in length
@@ -275,7 +278,7 @@ def compute_indirect_effect(
 
         # for each layer i, for each head j in the model save the vocab size in output
         if multi_token_generation:
-            model_output = simple_forward_pass(model, current_batch_tokens, multi_token_generation)
+            model_output = simple_forward_pass(model, current_batch_tokens, multi_token_generation, pad_token_id=tokenizer.pad_token_id)
 
             only_output_tokens = [
                 output.squeeze()[current_batch_tokens['input_ids'].shape[1] :] for output in model_output

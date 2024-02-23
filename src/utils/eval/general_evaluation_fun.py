@@ -182,7 +182,14 @@ def evaluate_tv_multi_token(
         desc='[x] Generating responses'
     )
     for prompt, imp_ids in pbar:
-        original_output = simple_forward_pass(model=model, prompt=prompt, multi_token_generation=True).cpu().squeeze()
+        original_output = simple_forward_pass(
+            model=model, 
+            prompt=prompt, 
+            multi_token_generation=True,
+            pad_token_id=tokenizer.pad_token_id,
+        ).cpu().squeeze()
+
+
 
         edited_output = replace_heads_w_avg_multi_token(
             tokenized_prompt=prompt,
@@ -192,20 +199,25 @@ def evaluate_tv_multi_token(
             model=model,
             config=config,
             pad_token_id=tokenizer.pad_token_id,
-        )
+        ).squeeze()
+
+        print(original_output.shape)
+        print(tokenizer.decode(original_output, skip_special_tokens=True))
+        print(edited_output.shape)
+        print(tokenizer.decode(edited_output, skip_special_tokens=True))
 
         # evaluate both outputs
         only_output_original = tokenizer.decode(
-            original_output.squeeze()[prompt.shape[0] :],
+            original_output[prompt.shape[0] :],
             skip_special_tokens=True,
         )
         only_output_edited = tokenizer.decode(
-            edited_output.squeeze()[prompt.shape[0] :],
+            edited_output[prompt.shape[0] :],
             skip_special_tokens=True,
         )
 
-        original_eval_res = evaluator.get_evaluation([only_output_original])
-        edited_eval_res = evaluator.get_evaluation([only_output_edited])
+        original_eval_res = evaluator.get_evaluation([only_output_original])[0].item()
+        edited_eval_res = evaluator.get_evaluation([only_output_edited])[0].item()
 
         results.append({
             "prompt": tokenizer.decode(prompt, skip_special_tokens=True),
