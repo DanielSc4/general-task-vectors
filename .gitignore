@@ -12,4 +12,4 @@ nohup*
 
 *.out
 logs
-debug.py
+debug.*

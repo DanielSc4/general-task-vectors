@@ -189,8 +189,6 @@ def evaluate_tv_multi_token(
             pad_token_id=tokenizer.pad_token_id,
         ).cpu().squeeze()
 
-
-
         edited_output = replace_heads_w_avg_multi_token(
             tokenized_prompt=prompt,
             important_ids=[imp_ids],
@@ -201,10 +199,11 @@ def evaluate_tv_multi_token(
             pad_token_id=tokenizer.pad_token_id,
         ).squeeze()
 
-        print(original_output.shape)
+        print('controlll')
         print(tokenizer.decode(original_output, skip_special_tokens=True))
-        print(edited_output.shape)
+        print('-------')
         print(tokenizer.decode(edited_output, skip_special_tokens=True))
+
 
         # evaluate both outputs
         only_output_original = tokenizer.decode(
@@ -257,3 +256,5 @@ def evaluate_tv_multi_token(
             print(f'  Original [score: {results[idx]["original_output_score"]}]: ' + results[idx]['original_output'].replace('\n', ' '))
             print(f'  Edited   [score: {results[idx]["edited_output_score"]}]: ' + results[idx]['edited_output'].replace('\n', ' '))
             
+    
+

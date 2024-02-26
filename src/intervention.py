@@ -36,6 +36,7 @@ def simple_forward_pass(
     if multi_token_generation:
         # use generate function and return the full output
         with model.generate(
+            max_new_tokens=30,
             pad_token_id=pad_token_id,
         ) as generator:
             with generator.invoke(prompt) as invoker:
@@ -76,6 +77,7 @@ def replace_heads_w_avg_multi_token(
     """
 
     with model.generate(
+        max_new_tokens=30,
         pad_token_id=pad_token_id,
     ) as generator:
         with generator.invoke(tokenized_prompt) as invoker:
