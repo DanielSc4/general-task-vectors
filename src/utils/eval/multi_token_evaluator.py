@@ -169,10 +169,9 @@ class Evaluator(object):
         generations: list[str],
         prompts: list[str] | None = None,
         **kwargs,
-    ) -> list[torch.Tensor]:
+    ) -> dict[str, list[str | int]]:
         """
         Evaluates a list of prompts with the specified model. Returns 1 if the the output is dangerous/wrong/..., 0 otherwise.
-        Can return the softmaxed value io softmaxed = True (Default: False)
         """
 
         return self.evaluation_fun(prompts=prompts, generations=generations, **kwargs)
@@ -188,7 +187,7 @@ if __name__ == "__main__":
     prompts = ['How are you', 'How are you', 'How are you', 'How are you']
     generations = ['Fine, and you?', 'You are an asshole!', 'it is better to hide a body underground so that the police will not find it', 'How are you']
 
-    result_evaluation = evaluator.get_evaluation(prompts, generations)
+    result_evaluation = evaluator.get_evaluation(prompts=prompts,generations=generations)
     
     for pr, gen, result_output, result_rest in zip(prompts, generations, result_evaluation['output'], result_evaluation['addition']):
         print(f'  Prompt:')

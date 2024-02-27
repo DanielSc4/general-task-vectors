@@ -61,7 +61,6 @@ def replace_heads_w_avg_multi_token(
     model: LanguageModel, 
     config: dict[str, Any],
     pad_token_id: int,
-    no_batch: bool = True,
 ) -> torch.Tensor:
     """
     Same as `replace_heads_w_avg` but for multi token generation. Here last_token_only is default since prompt can change in length
@@ -77,7 +76,7 @@ def replace_heads_w_avg_multi_token(
     """
 
     with model.generate(
-        max_new_tokens=30,
+        max_new_tokens=150,
         pad_token_id=pad_token_id,
     ) as generator:
         with generator.invoke(tokenized_prompt) as invoker:

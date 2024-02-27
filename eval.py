@@ -55,7 +55,7 @@ def main(
 
 
     if multi_token_evaluation:
-        evaluator = Evaluator()
+        evaluator = Evaluator('meta-llama/LlamaGuard-7b', load_in_8bit=True)
         
         evaluate_tv_multi_token(
             mean_activation=mean_activations,

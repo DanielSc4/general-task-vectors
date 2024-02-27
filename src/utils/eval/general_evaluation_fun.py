@@ -181,6 +181,7 @@ def evaluate_tv_multi_token(
         total=len(all_tokenized_prompt),
         desc='[x] Generating responses'
     )
+    # keeping batchsize =1 to allow for any output dim.
     for prompt, imp_ids in pbar:
         original_output = simple_forward_pass(
             model=model, 
@@ -199,31 +200,32 @@ def evaluate_tv_multi_token(
             pad_token_id=tokenizer.pad_token_id,
         ).squeeze()
 
-        print('controlll')
-        print(tokenizer.decode(original_output, skip_special_tokens=True))
-        print('-------')
-        print(tokenizer.decode(edited_output, skip_special_tokens=True))
-
-
-        # evaluate both outputs
+        # evaluate both original and edited outputs
         only_output_original = tokenizer.decode(
             original_output[prompt.shape[0] :],
             skip_special_tokens=True,
         )
+        
         only_output_edited = tokenizer.decode(
             edited_output[prompt.shape[0] :],
             skip_special_tokens=True,
         )
 
-        original_eval_res = evaluator.get_evaluation([only_output_original])[0].item()
-        edited_eval_res = evaluator.get_evaluation([only_output_edited])[0].item()
+        decoded_prompt = tokenizer.decode(prompt, skip_special_tokens=True)
+
+        eval_results = evaluator.get_evaluation(
+            prompts=[decoded_prompt] * 2,
+            generations=[only_output_original, only_output_edited],
+        )
+        # check what's in eval_results
+        print(eval_results)
 
         results.append({
-            "prompt": tokenizer.decode(prompt, skip_special_tokens=True),
+            "prompt": decoded_prompt,
             "original_output": only_output_original,
-            "original_output_score": original_eval_res,
+            "original_output_score": eval_results['output'][0],
             "edited_output": only_output_edited,
-            "edited_output_score": edited_eval_res,
+            "edited_output_score": eval_results['output'][1],
         })
 
 
