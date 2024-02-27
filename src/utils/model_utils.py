@@ -5,7 +5,7 @@ import random
 import functools
 
 from nnsight import LanguageModel
-from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig
+from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig, BitsAndBytesConfig
 
 
 # thanks to https://stackoverflow.com/questions/31174295/getattr-and-setattr-on-nested-subobjects-chained-properties
@@ -147,23 +147,12 @@ def load_model_and_tokenizer(
         }
 
     elif 'zephyr' or 'stablelm' or 'gemma' in model_name.lower():
-        # if 'stablelm-2-zephyr' in model_name.lower():
-        #     model = LanguageModel(
-        #         model_name,
-        #         device_map=device if not load_in_8bit else {'':0}, 
-        #         # tokenizer=tok,
-        #         load_in_8bit=load_in_8bit,
-        #         # config = conf,
-        #     )
-        #     # model.config = conf # needed, idk why
-        #     print('[x] Loading model manually to fix trust_remote_code issue when loading')
-        # else:
         model = LanguageModel(
             model_name, 
             device_map=device if not load_in_8bit else {'':0}, 
             trust_remote_code = True, 
-            load_in_8bit=load_in_8bit,
-            torch_dtype=torch.bfloat16 if not load_in_8bit else torch.float32,
+            quantization_config=BitsAndBytesConfig(load_in_8bit=True) if load_in_8bit else None,
+            low_cpu_mem_usage=True if load_in_8bit else None,
         )
         std_CONFIG = {
             'n_heads': model.config.num_attention_heads,

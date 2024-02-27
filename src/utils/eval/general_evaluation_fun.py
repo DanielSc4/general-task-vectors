@@ -217,8 +217,6 @@ def evaluate_tv_multi_token(
             prompts=[decoded_prompt] * 2,
             generations=[only_output_original, only_output_edited],
         )
-        # check what's in eval_results
-        print(eval_results)
 
         results.append({
             "prompt": decoded_prompt,
