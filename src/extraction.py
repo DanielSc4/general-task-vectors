@@ -49,7 +49,7 @@ def split_activation(activations, config):
 
 
 def extract_activations(
-        tokenized_prompts: dict[str, torch.Tensor], 
+        tokenized_prompts: dict[str, torch.Tensor] | torch.Tensor, 
         model: LanguageModel, 
         config: dict[str, Any],
         tokenizer: PreTrainedTokenizer,
@@ -70,11 +70,8 @@ def extract_activations(
         tuple[list[torch.Tensor], torch.Tensor]: tuple corresponding to the activations (batch, n_layers, n_heads, seq, d_head) and the model output [batch, seq]
     """
 
-
-    for k in tokenized_prompts:
-        tokenized_prompts[k] = tokenized_prompts[k].to(device)
     with model.generate(
-        max_new_tokens=1 if not multi_token_generation else 200,
+        max_new_tokens=1 if not multi_token_generation else 150,
         pad_token_id=tokenizer.pad_token_id,
     ) as generator:
         with generator.invoke(tokenized_prompts) as invoker:
@@ -108,7 +105,7 @@ def get_mean_activations(
         config: dict[str, Any],
         correct_labels: list[str],
         device: str,
-        batch_size: int = 10,
+        batch_size: int = 1,
         max_len: int = 256,
         multi_token_generation: bool = False,
         evaluator: Evaluator | None = None,
@@ -135,7 +132,6 @@ def get_mean_activations(
 
     """
 
-
     all_activations = []
     all_outputs = []
 
@@ -146,15 +142,20 @@ def get_mean_activations(
     )):
 
         end_index = min(start_index + batch_size, len(tokenized_prompts))
-        current_batch_size = end_index - start_index
 
-        current_batch_tokens, _ = pad_input_and_ids(
-            tokenized_prompts = tokenized_prompts[start_index : end_index], 
-            important_ids = important_ids[start_index : end_index],
-            max_len = max_len,
-            pad_token_id = tokenizer.eos_token_id,
-        )
-        
+        if batch_size > 1:
+            current_batch_tokens, _ = pad_input_and_ids(
+                tokenized_prompts = tokenized_prompts[start_index : end_index], 
+                important_ids = important_ids[start_index : end_index],
+                max_len = max_len,
+                pad_token_id = tokenizer.eos_token_id,
+            )
+            for k in current_batch_tokens:
+                current_batch_tokens[k] = current_batch_tokens[k].to(device)
+        else:
+            # avoid to pad the input when batch_size == 1 and use it as is
+            current_batch_tokens = tokenized_prompts[start_index].to(device)
+
         activations, outputs = extract_activations(
             tokenized_prompts=current_batch_tokens, 
             model=model, 
@@ -165,13 +166,9 @@ def get_mean_activations(
         )
 
         # move tensors to CPU for memory issues and store it
-        all_activations.append(activations.cpu())
-        all_outputs.append(outputs.cpu())
+        all_activations.append(activations.cpu())       # [batch, n_layers, n_heads, seq, d_head]
+        all_outputs.append(outputs.cpu())               # [batch, seq]
 
-
-    # stack all the batches
-    all_activations = torch.vstack(all_activations)     # [batch, n_layers, n_heads, seq, d_head]
-    all_outputs = torch.vstack(all_outputs)             # [batch, seq]
 
     if multi_token_generation:
         assert evaluator is not None, 'Evaluator object is required when using multi token generation'
@@ -184,6 +181,7 @@ def get_mean_activations(
             tokenizer.decode(ele, skip_special_tokens=True) for ele in only_output_tokens
         ]
 
+        # TODO: fix here the evaluation strategy, now changed
         evaluation_results = evaluator.get_evaluation(texts=detokenized_outputs)
         evaluation_results = torch.tensor(evaluation_results)
 
@@ -207,7 +205,12 @@ def get_mean_activations(
             print(f'[x] taking {correct_idx.sum()} examples out of {evaluation_results.shape[0]}')
         else:
             raise ValueError("Activations cannot be computed when no output has label 1")
+
     else:
+        # stack all the batches
+        all_activations = torch.vstack(all_activations)     # [batch, n_layers, n_heads, seq, d_head]
+        all_outputs = torch.vstack(all_outputs)             # [batch, seq]
+
         # getting the output token
         only_output_tokens = all_outputs[:, -1]
         # considering only the first token to evaluate the output
