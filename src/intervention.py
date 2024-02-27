@@ -92,7 +92,7 @@ def replace_heads_w_avg_multi_token(
                 ):
                     attention_head_values[prompt_idx][      # shape: [seq (256), d_head]
                         prompt_imp_ids[-1], :
-                    ] = avg_activations[idx][-1]     # shape: [seq (1 (the -1 pos.), d_model)] pos. 255 aka 256-th token (when max_len = 256)
+                    ] = avg_activations[idx]
 
     return generator.output
 
