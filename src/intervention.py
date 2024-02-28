@@ -209,6 +209,7 @@ def compute_indirect_effect(
     model,
     tokenizer: PreTrainedTokenizer,
     config: dict[str, Any],
+    device: str,
     dataset: list[tuple[str, str]],
     mean_activations: torch.Tensor,
     ICL_examples: int = 4,
@@ -267,29 +268,44 @@ def compute_indirect_effect(
         end_index = min(start_index + batch_size, len(all_tokenized_prompt))
         current_batch_size = end_index - start_index
 
-        current_batch_tokens, current_batch_important_ids = pad_input_and_ids(
-            tokenized_prompts = all_tokenized_prompt[start_index : end_index],
-            important_ids = all_important_ids[start_index : end_index],
-            max_len = 256,
-            pad_token_id = tokenizer.eos_token_id,
-        )
-
-        pbar.set_description('Processing original model')
+        if batch_size > 1:
+            current_batch_tokens, current_batch_important_ids = pad_input_and_ids(
+                tokenized_prompts = all_tokenized_prompt[start_index : end_index],
+                important_ids = all_important_ids[start_index : end_index],
+                max_len = 256,
+                pad_token_id = tokenizer.eos_token_id,
+            )
+            for k in current_batch_tokens:
+                current_batch_tokens[k] = current_batch_tokens[k].to(device)
+        else:
+            current_batch_tokens = all_tokenized_prompt[start_index].to(device)
         
-
+        pbar.set_description('Processing original model')
         # for each layer i, for each head j in the model save the vocab size in output
         if multi_token_generation:
-            model_output = simple_forward_pass(model, current_batch_tokens, multi_token_generation, pad_token_id=tokenizer.pad_token_id)
+            model_output = simple_forward_pass(
+                model, 
+                current_batch_tokens, 
+                multi_token_generation, 
+                pad_token_id=tokenizer.pad_token_id,
+            )
 
             only_output_tokens = [
-                output.squeeze()[current_batch_tokens['input_ids'].shape[1] :] for output in model_output
+                output.squeeze()[prompt['input_ids'].shape[0] :] 
+                for output, prompt in zip(model_output, current_batch_tokens)
             ]
-            detokenize_outputs = [
+            detokenized_prompts = [
+                tokenizer.decode(ele, skip_special_tokens=True) for ele in current_batch_tokens
+            ]
+            detokenized_outputs = [
                 tokenizer.decode(ele, skip_special_tokens=True) for ele in only_output_tokens
             ]
 
             # returns [torch.tensor([0.99, 0.01]), ...] like
-            evaluation_result = evaluator.get_evaluation(texts=detokenize_outputs, softmaxed=True)
+            evaluation_result = evaluator.get_evaluation(
+                prompts=detokenized_prompts,
+                generations=detokenized_outputs,
+            )
             results = torch.tensor([res[evaluator.negative_label] for res in evaluation_result])
             
             # result has shape [batch] (i.e. for each element of the batch (sentence) there is a score)
@@ -336,12 +352,12 @@ def compute_indirect_effect(
                     only_output_tokens = [
                         output.squeeze()[current_batch_tokens['input_ids'].shape[1] :] for output in model_output
                     ]
-                    detokenize_outputs = [
+                    detokenized_outputs = [
                         tokenizer.decode(ele, skip_special_tokens=True) for ele in only_output_tokens
                     ]
 
                     # returns [torch.tensor([0.99, 0.01]), ...] like
-                    evaluation_result = evaluator.get_evaluation(texts=detokenize_outputs, softmaxed=True)
+                    evaluation_result = evaluator.get_evaluation(texts=detokenized_outputs, softmaxed=True)
                     results = torch.tensor([res[evaluator.negative_label] for res in evaluation_result])
                     edited[:, layer_i, head_j] = results
 
