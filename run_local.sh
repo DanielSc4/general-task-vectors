@@ -45,9 +45,10 @@ source .venv/bin/activate
     --dataset_name joined-DX \
     --multi_token_generation \
     --mean_support 3 \
-    --aie_support 25 \
+    --aie_support 2 \
     --icl_examples 0 \
     --batch_size 10 \
     --load_in_8bit \
+    --use_local_backups \
 )
 
