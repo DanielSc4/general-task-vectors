@@ -1,7 +1,7 @@
 import torch
 import warnings
 from tqdm import tqdm
-from transformers import AutoModelForSequenceClassification, AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, PreTrainedModel
+from transformers import AutoModelForSequenceClassification, AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 
 
@@ -89,6 +89,7 @@ class Evaluator(object):
         ):
         return self.tokenizer.decode(input_ids, skip_special_tokens=skip_special_tokens)
 
+
     def _generate_score(
         self,
         input_ids: torch.Tensor,
@@ -130,6 +131,8 @@ class Evaluator(object):
         Get the model's outputs and returns a dict with `output` and `addition` keys. 
         - `output` is a list of positive | negative labels
         - `addition` is a list of whatever is after the negative and positive label (usually, with negative outputs, there is a list of violated categories)
+        - `positive_score` is a list of score wrt the positive label
+        - `negative_score` is a list of score wrt the negative label
         
         E.g.:
         ` unsafe \\n03,04        ` <-- model ouput
