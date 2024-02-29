@@ -94,7 +94,7 @@ def replace_heads_w_avg_multi_token(
 
 
 def replace_heads_w_avg(
-    tokenized_prompt: dict[str, torch.Tensor], 
+    tokenized_prompt: dict[str, torch.Tensor] | torch.Tensor, 
     important_ids: list[list[int]], 
     layers_heads: list[tuple[int, int]], 
     avg_activations: list[torch.Tensor], 
@@ -208,11 +208,18 @@ def _aie_loop(
     main_pbar: tqdm,
     multi_token_generation: bool,
     mean_activations: torch.Tensor,
-    prompt: torch.Tensor,
-    ) -> list[list[str | torch.Tensor]]:
+    prompt: dict[str, torch.Tensor] | torch.Tensor,
+    important_ids: list[int] | None,
+    ) -> list[list[str | torch.Tensor]] | torch.Tensor:
     """
     Returns, for each layer, for each head a string if multi_token_generation or a tensor (shape: vocab_size) if multi_token_generation = False. 
     """
+    
+    # if not multi_token_generation:
+        # will use a torch.tensor instead of layers_output and heads_output lists
+        # because all outputs have the same shape 
+    edited = torch.zeros([len(prompt), config['n_layers'], config['n_heads'], config['vocab_size']])
+
     inner_bar_layers = tqdm(
        range(config['n_layers']),
        total=config['n_layers'],
@@ -250,23 +257,34 @@ def _aie_loop(
                     tokenizer.decode(only_output_tokens, skip_special_tokens = True)
                 )
             else:
-                pass # da implementare
+                model_output = replace_heads_w_avg(
+                    tokenized_prompt=prompt,
+                    important_ids=important_ids,
+                    layers_heads=[(layer_i, head_j)],
+                    avg_activations=[mean_activations[layer_i, head_j]],
+                    model=model,
+                    config=config,
+                )
+                edited[:, layer_i, head_j, :] = model_output
 
         layers_output.append(heads_output)
-    return layers_output
+
+    if multi_token_generation:
+        return layers_output
+    else:
+        return edited
 
 
 def _compute_scores_multi_token(
     model: LanguageModel,
     tokenizer: PreTrainedTokenizer,
     config: dict[str, Any],
-    device: str,
     tokenized_prompts: tuple[torch.Tensor], # tuple len = aie_support, size tensor Size([seq])
     mean_activations: torch.Tensor,
     evaluator: Evaluator,
-) -> tuple[list[torch.Tensor], list[torch.Tensor]]:     # TODO, controlla se effettivamente è così
+) -> tuple[torch.Tensor, torch.Tensor]:     # TODO, controlla se effettivamente è così
 
-
+    # intervention
     prompts_and_outputs_original = {
         'prompt': [],
         'output': [],
@@ -311,6 +329,7 @@ def _compute_scores_multi_token(
             multi_token_generation=True,
             mean_activations=mean_activations,
             prompt=tokenized_prompts[idx],
+            important_ids=None,
         )
 
         prompts_and_outputs_edited['prompt'].append(
@@ -346,33 +365,70 @@ def _compute_scores_multi_token(
                 # uso [0] visto che sto passando un prompt alla volta, quindi il risultato è una lista ma che contiene un solo score
                 scores_edited[idx_prompt][layer][head] = evaluation_result[label_of_interest][0]
 
-    cie = cie.mean(dim=0)
-
-
-
-
-
-
-        # - `output` is a list of positive | negative labels
-        # - `addition` is a list of whatever is after the negative and positive label (usually, with negative outputs, there is a list of violated categories)
-        # - `positive_score` is a list of score wrt the positive label
-        # - `negative_score` is a list of score wrt the negative label
-
-
-
-
-
-
-
-
-
-
+    return scores_original, scores_edited
 
 
         
 
-def _compute_scores_single_token():
-    pass
+def _compute_scores_single_token(
+    model: LanguageModel,
+    tokenizer: PreTrainedTokenizer,
+    config: dict[str, Any],
+    tokenized_prompts: tuple[torch.Tensor], # tuple len = aie_support, size tensor Size([seq])
+    important_ids: list[int],
+    batch_size: int,
+    mean_activations: torch.Tensor,
+    ):
+    
+    # intervention
+    prompts_and_outputs_original = {
+        'prompt': [],
+        'output': [],
+    }
+    prompts_and_outputs_edited = {
+        'prompt': [],
+        'output': [],
+    }
+    for start_index in (pbar := tqdm(
+        range(0, len(tokenized_prompts), batch_size),
+        total = int(np.ceil(len(tokenized_prompts) / batch_size)),
+    )):
+        end_index = min(start_index + batch_size, len(tokenized_prompts))
+
+        current_batch_tokens, current_batch_important_ids = pad_input_and_ids(
+            tokenized_prompts=tokenized_prompts[start_index : end_index],
+            important_ids=important_ids[start_index : end_index],
+            max_len=256,
+            pad_token_id=tokenizer.pad_token_id,
+        )
+        pbar.set_description('Original forward pass')
+        # get the model's output [batch, vocab_size]
+        vocab = simple_forward_pass(model, current_batch_tokens, multi_token_generation=False)
+
+        prompts_and_outputs_original['prompt'].append(current_batch_tokens)
+        prompts_and_outputs_original['output'].append(vocab)
+
+        # no need to copy the prompt but reporting here for consistancy
+        prompts_and_outputs_edited['prompt'].append(current_batch_tokens)
+        pbar.set_description('Edited forward pass')
+
+        edited_vocabs = _aie_loop(
+            model=model,
+            tokenizer=tokenizer,
+            config=config,
+            main_pbar=pbar,
+            multi_token_generation=False,
+            mean_activations=mean_activations,
+            prompt=current_batch_tokens,
+            important_ids=current_batch_important_ids,
+        )
+        prompts_and_outputs_edited['output'].append(edited_vocabs)
+
+    # stack all the batchsizes
+    stacked_original_vocabs = torch.vstack(prompts_and_outputs_original['output'])
+    stacked_edited_vocabs = torch.vstack(prompts_and_outputs_edited['output'])
+
+    return stacked_original_vocabs, stacked_edited_vocabs 
 
 
 
@@ -407,9 +463,6 @@ def compute_indirect_effect(
     Returns:
         _type_: TBD
     """
-
-
-
     # randomize prompts to make the model unable to guess the correct answer
     randomized_dataset = randomize_dataset(dataset)
     
@@ -434,147 +487,21 @@ def compute_indirect_effect(
             model=model,
             tokenizer=tokenizer,
             config=config,
-            device=device,
             tokenized_prompts=all_tokenized_prompt,
             mean_activations=mean_activations,
             evaluator=evaluator,
         )
     else:
-        scores_original, scores_edited = None, None
-        _compute_scores_single_token()
+        scores_original, scores_edited = _compute_scores_single_token(
+            model=model,
+            tokenizer=tokenizer,
+            config=config,
+            tokenized_prompts=all_tokenized_prompt,
+            important_ids=all_important_ids,
+            batch_size=batch_size,
+            mean_activations=mean_activations,
+        )
 
-    # # probabilities over vocab from the original model
-    # scores_original = [] # torch.zeros([len(randomized_dataset), config['vocab_size']])
-    # scores_edited = []   # torch.zeros([len(all_tokenized_prompt), config['n_layers'], config['n_heads'], config['vocab_size'] or len(generated_output)])
-    #
-    # for start_index in (pbar := tqdm(
-    #     range(0, len(all_tokenized_prompt), batch_size), 
-    #     total = int(np.ceil(len(all_tokenized_prompt) / batch_size))
-    # )):
-    #     end_index = min(start_index + batch_size, len(all_tokenized_prompt))
-    #     current_batch_size = end_index - start_index
-    #
-    #     if batch_size > 1:
-    #         current_batch_tokens, current_batch_important_ids = pad_input_and_ids(
-    #             tokenized_prompts = all_tokenized_prompt[start_index : end_index],
-    #             important_ids = all_important_ids[start_index : end_index],
-    #             max_len = 256,
-    #             pad_token_id = tokenizer.eos_token_id,
-    #         )
-    #         for k in current_batch_tokens:
-    #             current_batch_tokens[k] = current_batch_tokens[k].to(device)
-    #     else:
-    #         current_batch_tokens = all_tokenized_prompt[start_index].to(device)
-    #     
-    #     pbar.set_description('Processing original model')
-    #     # for each layer i, for each head j in the model save the vocab size in output
-    #     if multi_token_generation:
-    #         model_output = simple_forward_pass(
-    #             model, 
-    #             current_batch_tokens, 
-    #             multi_token_generation, 
-    #             pad_token_id=tokenizer.pad_token_id,
-    #         )
-    #
-    #         only_output_tokens = [
-    #             output.squeeze()[prompt['input_ids'].shape[0] :] 
-    #             for output, prompt in zip(model_output, current_batch_tokens)
-    #         ]
-    #         detokenized_prompts = [
-    #             tokenizer.decode(ele, skip_special_tokens=True) for ele in current_batch_tokens
-    #         ]
-    #         detokenized_outputs = [
-    #             tokenizer.decode(ele, skip_special_tokens=True) for ele in only_output_tokens
-    #         ]
-    #
-    #
-    #         label_of_interest = evaluator.negative_label
-    #         evaluation_result = evaluator.get_evaluation(
-    #             prompts=detokenized_prompts,
-    #             generations=detokenized_outputs,
-    #         )
-    #         results = torch.tensor([res[evaluator.negative_label] for res in evaluation_result])
-    #         
-    #         # result has shape [batch] (i.e. for each element of the batch (sentence) there is a score)
-    #         scores_original.append(results) 
-    #
-    #         # inventati una strutta dati
-    #         edited = torch.zeros([current_batch_size, config['n_layers'], config['n_heads']])       # no vocab_size, store directly the score returned from the Evaluator
-    #     else:
-    #         # take the original result from the model (probability of correct response token y)
-    #         scores_original.append(
-    #             simple_forward_pass(model, current_batch_tokens, multi_token_generation)
-    #         )
-    #         edited = torch.zeros([current_batch_size, config['n_layers'], config['n_heads'], config['vocab_size']])
-    #
-    #     inner_bar_layers = tqdm(
-    #        range(config['n_layers']),
-    #        total=config['n_layers'],
-    #        leave=False,
-    #        desc='  -th layer',
-    #     )
-    #     for layer_i in inner_bar_layers:
-    #         inner_bar_heads = tqdm(
-    #             range(config['n_heads']),
-    #             total=config['n_heads'],
-    #             leave=False,
-    #             desc='    -th head',
-    #         )
-    #         for head_j in inner_bar_heads:
-    #             pbar.set_description(
-    #                 f'Processing edited model (l: {layer_i}/{config["n_layers"]}, h: {head_j}/{config["n_heads"]})'
-    #             )
-    #             if multi_token_generation:
-    #                 # here the return value has already the softmaxed scored from the evaluator object
-    #                 model_output = replace_heads_w_avg_multi_token(
-    #                     tokenized_prompt=current_batch_tokens,
-    #                     important_ids=current_batch_important_ids,
-    #                     layers_heads=[(layer_i, head_j)],
-    #                     avg_activations=[mean_activations[layer_i, head_j]],
-    #                     model=model,
-    #                     config=config,
-    #                     pad_token_id=tokenizer.pad_token_id if tokenizer.pad_token_id else tokenizer.eos_token_id,
-    #                 )
-    #                 # detokenize output, keeping as a list since can have different lenght (if batch is not used)
-    #                 only_output_tokens = [
-    #                     output.squeeze()[current_batch_tokens['input_ids'].shape[1] :] for output in model_output
-    #                 ]
-    #                 detokenized_outputs = [
-    #                     tokenizer.decode(ele, skip_special_tokens=True) for ele in only_output_tokens
-    #                 ]
-    #
-    #                 # returns [torch.tensor([0.99, 0.01]), ...] like
-    #                 evaluation_result = evaluator.get_evaluation(texts=detokenized_outputs, softmaxed=True)
-    #                 results = torch.tensor([res[evaluator.negative_label] for res in evaluation_result])
-    #                 edited[:, layer_i, head_j] = results
-    #
-    #             else:
-    #                 # here the returned value has shape [batch, vocab_size]
-    #                 returned = replace_heads_w_avg(
-    #                     tokenized_prompt=current_batch_tokens,
-    #                     important_ids=current_batch_important_ids,
-    #                     layers_heads=[(layer_i, head_j)],
-    #                     avg_activations=[mean_activations[layer_i, head_j]],
-    #                     model=model,
-    #                     config=config,
-    #                 )
-    #                 edited[:, layer_i, head_j, :] = returned
-    #         
-    #     # end of the current batch
-    #     scores_edited.append(edited.cpu())
-    #
-    # # stack all batch together
-    # if multi_token_generation:
-    #     # here probs_original is a list of single tensors (the scores). E.g. [tensor(0), tensor(1), tensor(0)]
-    #     scores_original = torch.hstack(scores_original)
-    # else:
-    #     # here probs_original is a list of tensors with shape [batch, vocab_size]
-    #     scores_original = torch.vstack(scores_original)
-    #
-    # scores_edited = torch.vstack(scores_edited)
-    # 
-    # print(scores_original.shape)
-    # print(scores_edited.shape)
     
     if multi_token_generation:
         cie = torch.zeros([scores_original.shape[0], config['n_layers'], config['n_heads']])
