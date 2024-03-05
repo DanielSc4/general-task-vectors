@@ -49,12 +49,12 @@ def split_activation(activations, config):
 
 
 def extract_activations(
-        tokenized_prompts: dict[str, torch.Tensor], 
+        tokenized_prompts: dict[str, torch.Tensor] | torch.Tensor, 
         model: LanguageModel, 
         config: dict[str, Any],
         tokenizer: PreTrainedTokenizer,
-        device: str,
         multi_token_generation: bool = False,
+        last_token_only: bool = False,
     ):
     """Extract the activation and the output produced from the model using the tokenized prompts provided
 
@@ -70,11 +70,8 @@ def extract_activations(
         tuple[list[torch.Tensor], torch.Tensor]: tuple corresponding to the activations (batch, n_layers, n_heads, seq, d_head) and the model output [batch, seq]
     """
 
-
-    for k in tokenized_prompts:
-        tokenized_prompts[k] = tokenized_prompts[k].to(device)
     with model.generate(
-        max_new_tokens=1 if not multi_token_generation else 200,
+        max_new_tokens=1 if not multi_token_generation else 150,
         pad_token_id=tokenizer.pad_token_id,
     ) as generator:
         with generator.invoke(tokenized_prompts) as invoker:
@@ -94,8 +91,10 @@ def extract_activations(
 
     output = generator.output   # contains also the prompt
 
-    # from hidden state split heads and permute: n_layers, tokens, n_heads, d_head -> n_layers, n_heads, tokens, d_head
+    # from hidden state split heads and permute: batch, n_layers, tokens, n_heads, d_head -> batch, n_layers, n_heads, tokens, d_head
     attn_activations = split_activation(layer_attn_activations, config)
+    if last_token_only:
+        attn_activations = attn_activations[:, :, :, -1, :]
 
     return attn_activations, output
 
@@ -108,7 +107,7 @@ def get_mean_activations(
         config: dict[str, Any],
         correct_labels: list[str],
         device: str,
-        batch_size: int = 10,
+        batch_size: int = 1,
         max_len: int = 256,
         multi_token_generation: bool = False,
         evaluator: Evaluator | None = None,
@@ -135,7 +134,6 @@ def get_mean_activations(
 
     """
 
-
     all_activations = []
     all_outputs = []
 
@@ -146,67 +144,86 @@ def get_mean_activations(
     )):
 
         end_index = min(start_index + batch_size, len(tokenized_prompts))
-        current_batch_size = end_index - start_index
 
-        current_batch_tokens, _ = pad_input_and_ids(
-            tokenized_prompts = tokenized_prompts[start_index : end_index], 
-            important_ids = important_ids[start_index : end_index],
-            max_len = max_len,
-            pad_token_id = tokenizer.eos_token_id,
-        )
-        
+        if batch_size > 1:
+            current_batch_tokens, _ = pad_input_and_ids(
+                tokenized_prompts = tokenized_prompts[start_index : end_index], 
+                important_ids = important_ids[start_index : end_index],
+                max_len = max_len,
+                pad_token_id = tokenizer.eos_token_id,
+            )
+            for k in current_batch_tokens:
+                current_batch_tokens[k] = current_batch_tokens[k].to(device)
+        else:
+            # avoid to pad the input when batch_size == 1 and use it as is
+            current_batch_tokens = tokenized_prompts[start_index].to(device)
+
         activations, outputs = extract_activations(
             tokenized_prompts=current_batch_tokens, 
             model=model, 
             config=config,
             tokenizer=tokenizer,
-            device=device,
-            multi_token_generation = multi_token_generation,
+            multi_token_generation=multi_token_generation,
+            last_token_only=True,
         )
 
         # move tensors to CPU for memory issues and store it
-        all_activations.append(activations.cpu())
-        all_outputs.append(outputs.cpu())
-
+        all_activations.append(activations.cpu())       # [batch, n_layers, n_heads, seq, d_head]
+        all_outputs.append(outputs.cpu())               # [batch, seq]
 
     # stack all the batches
-    all_activations = torch.vstack(all_activations)     # [batch, n_layers, n_heads, seq, d_head]
-    all_outputs = torch.vstack(all_outputs)             # [batch, seq]
+    all_activations = torch.vstack(all_activations)     # [batch, n_layers, n_heads, seq(no if last_token_only), d_head]
 
     if multi_token_generation:
         assert evaluator is not None, 'Evaluator object is required when using multi token generation'
 
         # take only the generated tokens (from len of original_prompt to the end)
-        only_output_tokens = [output.squeeze()[max_len:] for output in all_outputs]
+        only_output_tokens = [output.squeeze()[prompt.shape[0] :] for output, prompt in zip(all_outputs, tokenized_prompts)]
 
-        # detokenize prompt the get the evaluation
+        # detokenize prompts and outputs to get the evaluation
+        detokenized_prompts = [
+            tokenizer.decode(ele, skip_special_tokens=True) for ele in tokenized_prompts
+        ]
         detokenized_outputs = [
             tokenizer.decode(ele, skip_special_tokens=True) for ele in only_output_tokens
         ]
+
+        evaluation_results = evaluator.get_evaluation(
+            prompts=detokenized_prompts,
+            generations=detokenized_outputs,
+        )
 
         # saves outpus
         if save_output_path:
             json_to_write = [
                 {
-                    "input": tokenizer.decode(prompt, skip_special_tokens=True),
+                    "input": prompt,
                     "output": output,
+                    "output_label": assigned_label,
                 }
-                for prompt, output, full_output in zip(tokenized_prompts, detokenized_outputs, all_outputs)
+                for prompt, output, assigned_label in zip(
+                    detokenized_prompts, 
+                    detokenized_outputs, 
+                    evaluation_results['output'],
+                )
             ]
             with open(save_output_path, 'w+', encoding='utf-8') as f:
                 json.dump(json_to_write, f, indent=4)
 
-        evaluation_results = evaluator.get_evaluation(texts=detokenized_outputs)
-        evaluation_results = torch.tensor(evaluation_results)
 
         # assuming label == 1 -> negative output (i.e. using torch.ones)
-        correct_idx = (evaluation_results == torch.ones(evaluation_results.shape[0]))
+        label_of_interest = evaluator.negative_label
+        correct_idx = [True if x == label_of_interest else False for x in evaluation_results['output']]
             
-        if correct_idx.sum() > 0:
-            print(f'[x] taking {correct_idx.sum()} examples out of {evaluation_results.shape[0]}')
+        if sum(correct_idx) > 0:
+            print(f'[x] taking {sum(correct_idx)} examples out of {len(correct_idx)}. [{sum(correct_idx)/len(correct_idx)*100:.2f}%]')
         else:
-            raise ValueError("Activations cannot be computed when no output has label 1")
+            raise ValueError("Activations cannot be computed when there are no label of interest returned by the evaluator")
+
+        
     else:
+        all_outputs = torch.vstack(all_outputs)             # [batch, seq]
+
         # getting the output token
         only_output_tokens = all_outputs[:, -1]
         # considering only the first token to evaluate the output
@@ -219,9 +236,9 @@ def get_mean_activations(
         else:
             raise ValueError("Activations cannot be computed when model accuracy is 0%")
 
-        # using only activations from correct prediction to compute the mean_activations
+    # using only activations from correct prediction to compute the mean_activations
     correct_activations = all_activations[correct_idx]
-    
+
     mean_activations = correct_activations.mean(axis = 0)
     mean_activations = mean_activations.to(device)
     

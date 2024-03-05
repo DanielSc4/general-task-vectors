@@ -1,10 +1,11 @@
 import fire
 import torch
 import random
+from src.utils.eval.multi_token_evaluator import Evaluator
 
 from src.utils.model_utils import set_seed, get_top_attention_heads, load_model_and_tokenizer
 from src.utils.prompt_helper import load_json_dataset
-from src.utils.eval.standard_evaluation import evaluate_tv_kshot
+from src.utils.eval.general_evaluation_fun import evaluate_tv_kshot, evaluate_tv_multi_token
 
 
 def main(
@@ -15,6 +16,7 @@ def main(
     top_n_heads:int = 10,
     eval_dim: int = 111,
     load_in_8bit: bool = True,
+    multi_token_evaluation: bool = False,
     corrupted_ICL: bool = False,
     ICL_examples: int = 0,
     print_examples: bool = True,
@@ -51,17 +53,34 @@ def main(
 
     idx_for_eval = random.sample(range(len(dataset)), eval_dim)
 
-    evaluate_tv_kshot(
-        mean_activation=mean_activations,
-        top_heads=top_heads,
-        model=model,
-        tokenizer=tokenizer,
-        config=config,
-        prompts_from_dataset=[dataset[i] for i in idx_for_eval],
-        corrupted_ICL=corrupted_ICL,
-        ICL_examples=ICL_examples,
-        print_examples=print_examples,
-    )
+
+    if multi_token_evaluation:
+        evaluator = Evaluator('meta-llama/LlamaGuard-7b', load_in_8bit=True)
+        
+        evaluate_tv_multi_token(
+            mean_activation=mean_activations,
+            top_heads=top_heads,
+            model=model,
+            tokenizer=tokenizer,
+            config=config,
+            prompts_from_dataset=[dataset[i] for i in idx_for_eval],
+            evaluator=evaluator,
+            print_examples=print_examples,
+        )
+    else:
+        evaluate_tv_kshot(
+            mean_activation=mean_activations,
+            top_heads=top_heads,
+            model=model,
+            tokenizer=tokenizer,
+            config=config,
+            prompts_from_dataset=[dataset[i] for i in idx_for_eval],
+            corrupted_ICL=corrupted_ICL,
+            ICL_examples=ICL_examples,
+            print_examples=print_examples,
+        )
+
 
 if __name__ == "__main__":
     fire.Fire(main)
+
