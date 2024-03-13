@@ -1,4 +1,4 @@
-source .venv/bin/activate
+# source .venv/bin/activate
 
 # python -m main --model_name EleutherAI/gpt-j-6b --dataset_name capitalize --icl_examples 10 --batch_size 9 --load_in_8bit --use_local_backups
 # echo "country-capital"
@@ -45,9 +45,10 @@ source .venv/bin/activate
     --dataset_name joined-DX \
     --multi_token_generation \
     --mean_support 100 \
-    --aie_support 25 \
+    --aie_support 2 \
     --icl_examples 0 \
-    --batch_size 10 \
+    --batch_size 1 \
     --load_in_8bit \
+    --use_local_backups \
 )
 
