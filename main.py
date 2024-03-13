@@ -50,6 +50,7 @@ def main(
     path_to_mean_activations = os.path.join(path_to_output, f'{dataset_name}_mean_activations_{model_name.replace("/", "-")}_ICL{icl_examples}.pt')
     path_to_cie = os.path.join(path_to_output, f'{dataset_name}_cie_{model_name.replace("/", "-")}_ICL{icl_examples}.pt')
     path_to_output_generation = os.path.join(path_to_output, f'{dataset_name}_output.json')
+    path_to_output_all = os.path.join(path_to_output, f'{dataset_name}_tot_out.json')
 
     if save_plot:
         Path('./output/plots').mkdir(parents=True, exist_ok=True)
@@ -134,6 +135,7 @@ def main(
             aie_support=aie_support,
             multi_token_generation=multi_token_generation,
             evaluator=evaluator if multi_token_generation else None,
+            save_output_path=path_to_output_all,
         )
         torch.save(cie, path_to_cie)
         print('[x] CIE output saved')

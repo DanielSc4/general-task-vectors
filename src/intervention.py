@@ -283,6 +283,7 @@ def _compute_scores_multi_token(
     tokenized_prompts: tuple[torch.Tensor], # tuple len = aie_support, size tensor Size([seq])
     mean_activations: torch.Tensor,
     evaluator: Evaluator,
+    save_output_path: str | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:     # TODO, controlla se effettivamente è così
 
     # intervention
@@ -393,8 +394,9 @@ def _compute_scores_multi_token(
             }
         )
 
-    with open('logs.json', 'w') as fout:
-        json.dump(logs_output, fout, indent=4)
+    if save_output_path:
+        with open(save_output_path, 'w+') as fout:
+            json.dump(logs_output, fout, indent=4)
 
     return scores_original, scores_edited
 
@@ -475,6 +477,7 @@ def compute_indirect_effect(
     aie_support: int = 25,
     multi_token_generation: bool = False,
     evaluator: Evaluator | None = None,
+    save_output_path: str | None = None,
 ):
     """Compute indirect effect on the provided dataset by comparing the prediction of the original model
     to the predicition of the modified model. Specifically, for the modified model, each attention head
@@ -521,6 +524,7 @@ def compute_indirect_effect(
             tokenized_prompts=all_tokenized_prompt,
             mean_activations=mean_activations,
             evaluator=evaluator,
+            save_output_path=save_output_path,
         )
     else:
         scores_original, scores_edited = _compute_scores_single_token(
