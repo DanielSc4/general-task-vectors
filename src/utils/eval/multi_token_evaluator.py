@@ -95,7 +95,10 @@ class Evaluator(object):
         input_ids: torch.Tensor,
         max_new_tokens: int = 100,
         pad_token_id: int = 0, 
-        ):
+        ) -> dict[str, list[int | float]]:
+        """
+        Get the model's outputs and returns a dict with the 'model_output' and the scores for the positive and negative labels
+        """
         # single forward pass to get the probabilities of the first generated token
         with torch.no_grad():
             logits = self.evaluation_model(input_ids=input_ids).logits.cpu()

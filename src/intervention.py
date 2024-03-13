@@ -4,6 +4,7 @@ import torch
 from tqdm import tqdm
 import numpy as np
 import random
+import json
 
 from transformers import PreTrainedTokenizer
 from src.utils.model_utils import rgetattr
@@ -336,8 +337,7 @@ def _compute_scores_multi_token(
             tokenizer.decode(tokenized_prompts[idx], skip_special_tokens=True)
         )
         prompts_and_outputs_edited['output'].append(edited_out)
-
-
+    
 
     # Evaluation
     label_of_interest = evaluator.negative_label
@@ -365,10 +365,41 @@ def _compute_scores_multi_token(
                 # uso [0] visto che sto passando un prompt alla volta, quindi il risultato è una lista ma che contiene un solo score
                 scores_edited[idx_prompt][layer][head] = evaluation_result[label_of_interest][0]
 
+                
+
+    # saving everything (logs_output)
+    print('[x] Saving logs')
+    logs_output = []
+    for idx in range(len(prompts_and_outputs_edited['prompt'])):
+        logs_output.append(
+            {
+                'input': prompts_and_outputs_original['prompt'][idx],
+                'original': {
+                    'output': prompts_and_outputs_original['output'][idx],
+                    'eval': evaluation_result,
+                },
+                'edited': [
+                    (
+                        f'{layer},{head}', {
+                            'output': prompts_and_outputs_edited['output'][idx][layer][head],
+                            'eval': {
+                                label_of_interest: scores_edited[idx][layer][head].item(),
+                            },
+                        }
+                    )
+                    for layer in range(config['n_layers'])
+                    for head in range(config['n_heads'])
+                ]
+            }
+        )
+
+    with open('logs.json', 'w') as fout:
+        json.dump(logs_output, fout, indent=4)
+
     return scores_original, scores_edited
 
 
-        
+
 
 def _compute_scores_single_token(
     model: LanguageModel,
