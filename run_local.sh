@@ -44,11 +44,10 @@ source .venv/bin/activate
     --model_name stabilityai/stablelm-2-zephyr-1_6b \
     --dataset_name joined-DX \
     --multi_token_generation \
-    --mean_support 3 \
-    --aie_support 2 \
+    --mean_support 100 \
+    --aie_support 25 \
     --icl_examples 0 \
     --batch_size 10 \
     --load_in_8bit \
-    --use_local_backups \
 )
 
