@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH --job-name=task_vector_task
+#SBATCH --job-name=general_task_vector
 #SBATCH --time=2:00:00
 #SBATCH --mem=40GB
 #SBATCH --gpus-per-node=a100.20gb:1
@@ -9,6 +9,7 @@
 # single CPU only script
 module purge
 module load Python/3.9.6-GCCcore-11.2.0
+module load Python/3.10.8-GCCcore-12.2.0
 module load CUDA/11.7.0
 
 
