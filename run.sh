@@ -35,11 +35,10 @@ echo "Executing python script..."
     --dataset_name joined-DX \
     --multi_token_generation \
     --mean_support 100 \
-    --aie_support 4 \
+    --aie_support 10 \
     --icl_examples 0 \
     --batch_size 1 \
     --load_in_8bit \
-    --use_local_backups \
 )
 
 
