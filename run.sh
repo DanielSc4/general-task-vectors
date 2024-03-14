@@ -1,30 +1,50 @@
 #!/bin/bash
 #SBATCH --job-name=general_task_vector
-#SBATCH --time=2:00:00
+#SBATCH --time=3:00:00
 #SBATCH --mem=40GB
 #SBATCH --gpus-per-node=a100.20gb:1
-#SBATCH --output=<path to log folder>/%x.%j.out
+#SBATCH --output=/home1/p313544/slurm_logs/%x.%j.out
 
 
-# single CPU only script
+# single GPU only script
 module purge
-module load Python/3.9.6-GCCcore-11.2.0
+# module load Python/3.9.6-GCCcore-11.2.0
 module load Python/3.10.8-GCCcore-12.2.0
 module load CUDA/11.7.0
 
-
-cd <path to project>
-pip install -r requirements.txt
-
 echo "Python version: $(python --version)"
 nvidia-smi
+pwd
 
-python -m main --model_name microsoft/phi-2 --dataset_name antonym --icl_examples 4 --batch_size 32 --load_in_8bit
-python -m main --model_name microsoft/phi-2 --dataset_name sentiment --icl_examples 4 --batch_size 32 --load_in_8bit
+# User's vars
+# All scripts must be in the PATH_TO_PRJ/scripts directory!
+PATH_TO_PRJ=/home1/p313544/Documents/general-task-vectors
 
-(yes | python -m main --model_name stabilityai/stablelm-2-zephyr-1_6b --dataset_name antonym --icl_examples 10 --batch_size 32 --load_in_8bit)
+# checkpoint save path
+export PATH_TO_STORAGE=/scratch/p313544/storage_cache/
 
-# python -m main --model_name EleutherAI/pythia-1B --dataset_name sentiment --icl_examples 4 --batch_size 32 --load_in_8bit
+cd $PATH_TO_PRJ
+source .venv/bin/activate
+
+
+echo "Executing python script..."
+
+
+(yes | python -m main \
+    --model_name stabilityai/stablelm-2-zephyr-1_6b \
+    --dataset_name joined-DX \
+    --multi_token_generation \
+    --mean_support 100 \
+    --aie_support 4 \
+    --icl_examples 0 \
+    --batch_size 1 \
+    --load_in_8bit \
+    --use_local_backups \
+)
+
+
+
+
 # performance notes
 # on Tesla T4 (~ 16GB)
 #   1B 8bit model + 16 batchsize (up to 60% of memory)
