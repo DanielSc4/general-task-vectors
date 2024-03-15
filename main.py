@@ -43,17 +43,14 @@ def main(
         use_local_backups (bool, optional): when exists, do not compute mean_activation and CIE bt get the backup in the `./output/` dir. Defaults to False.
     """
     # create directory for storage and models output
-    Path('./output/').mkdir(parents=True, exist_ok=True)
-    path_to_output = f'./output/{model_name.split("/")[1]}'
+    path_to_output = f'./output/{model_name.split("/")[1]}/{dataset_name}'
     Path(path_to_output).mkdir(parents=True, exist_ok=True)
 
-    path_to_mean_activations = os.path.join(path_to_output, f'{dataset_name}_mean_activations_{model_name.replace("/", "-")}_ICL{icl_examples}.pt')
-    path_to_cie = os.path.join(path_to_output, f'{dataset_name}_cie_{model_name.replace("/", "-")}_ICL{icl_examples}.pt')
-    path_to_output_generation = os.path.join(path_to_output, f'{dataset_name}_output.json')
-    path_to_output_all = os.path.join(path_to_output, f'{dataset_name}_tot_out.json')
-
-    if save_plot:
-        Path('./output/plots').mkdir(parents=True, exist_ok=True)
+    path_to_mean_activations = os.path.join(path_to_output, f'mean_activations_ICL{icl_examples}_sup{mean_support}.pt')
+    path_to_cie = os.path.join(path_to_output, f'cie_ICL{icl_examples}_sup{aie_support}.pt')
+    path_to_output_generation = os.path.join(path_to_output, f'output_mean_activations.json')
+    path_to_output_all = os.path.join(path_to_output, f'output_intervention.json')
+    path_to_plot = os.path.join(path_to_output, f'plot_{model_name.replace("/", "-")}_ICL{icl_examples}_sup{aie_support}.png')
 
     # load dataset
     dataset = load_json_dataset(f'./data/{dataset_name}.json')
@@ -143,10 +140,10 @@ def main(
     if save_plot:
         print('[x] Generating CIE plot')
         ax = sns.heatmap(cie.cpu(), linewidth=0.5, cmap='RdBu', center=0)
-        plt.title(model_name.replace("/", "-"))
+        plt.title(f'plot_{model_name.replace("/", "-")}_support{aie_support}')
         plt.xlabel('head')
         plt.ylabel('layer')
-        plt.savefig(f'./output/plots/{dataset_name}_cie_{model_name.replace("/", "-")}_ICL{icl_examples}.png')
+        plt.savefig(path_to_plot)
 
 if __name__ == "__main__":
     fire.Fire(main)
