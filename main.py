@@ -19,7 +19,6 @@ def main(
     model_name: str = 'gpt2',
     load_in_8bit: bool = False,
     dataset_name: str = 'following',
-    multi_token_generation: bool = True,
     icl_examples: int = 4,
     batch_size: int = 12,
     mean_support: int = 100,
@@ -34,7 +33,6 @@ def main(
         load_in_8bit (bool, optional): option to load the model in 8bit. Defaults to False.
         dataset_name (str, optional): name of the dataset (`.json` in `./data/` dir). Defaults to 'following'.
         icl_examples (int, optional): number of ICL examples, 0 for zero-shot. Defaults to 4.
-        multi_token_generation (bool, optional): Use multi_token_generation. Defaults to True.
         batch_size (int, optional): batch size for cie intervention. Defaults to 12.
         mean_support (int, optional): number of example to average over when computing mean_activation. Defaults to 100.
         aie_support (int, optional): number of example to average over when computning CIE matrix. Defaults to 25.
@@ -57,10 +55,9 @@ def main(
     dataset = list(map(lambda x: tuple(x.values()), dataset))
     print(f'[x] Loading dataset, len: {len(dataset)}')
 
-    if multi_token_generation:
-        if batch_size != 1:
-            warnings.warn(f'batch_size set to {batch_size} not supported when using multi_token_generation. Setting batch_size to 1')
-            batch_size = 1
+    if batch_size != 1:
+        warnings.warn(f'batch_size set to {batch_size} not supported when using multi token generation. Setting batch_size to 1')
+        batch_size = 1
 
     torch.set_grad_enabled(False)
     set_seed(32)
@@ -84,11 +81,8 @@ def main(
     tok_ret, ids_ret, correct_labels = zip(*selected_examples)
 
 
-    if multi_token_generation:
-        evaluator = Evaluator('meta-llama/LlamaGuard-7b', load_in_8bit=True)
-    else:
-        evaluator = None
-
+    # change default behaviour for evaluation strategy
+    evaluator = Evaluator('meta-llama/LlamaGuard-7b', load_in_8bit=True)
 
     # get mean activations from the model (or stored ones if already exist)
     if os.path.isfile(path_to_mean_activations) and use_local_backups:
@@ -105,8 +99,7 @@ def main(
             correct_labels=correct_labels,
             device=device,
             batch_size=batch_size,
-            multi_token_generation=multi_token_generation,
-            evaluator=evaluator if multi_token_generation else None,
+            evaluator=evaluator,
             save_output_path=path_to_output_generation,
         )
         # store mean_activations
@@ -130,8 +123,7 @@ def main(
             ICL_examples = icl_examples,
             batch_size=batch_size,
             aie_support=aie_support,
-            multi_token_generation=multi_token_generation,
-            evaluator=evaluator if multi_token_generation else None,
+            evaluator=evaluator,
             save_output_path=path_to_output_all,
         )
         torch.save(cie, path_to_cie)
