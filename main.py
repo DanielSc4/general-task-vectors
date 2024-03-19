@@ -117,7 +117,6 @@ def main(
             model=model,
             tokenizer=tokenizer,
             config=config,
-            device=device,
             dataset=dataset, 
             mean_activations=mean_activations,
             ICL_examples = icl_examples,
