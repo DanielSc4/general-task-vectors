@@ -27,28 +27,19 @@ def filter_activations(activation, important_ids):
 def simple_forward_pass(
         model: LanguageModel,
         prompt: torch.Tensor | dict[str, torch.Tensor],
-        multi_token_generation: bool = False,
         pad_token_id: int | None = None,
     ) -> torch.Tensor:
     """
-    Perform a single forward pass with no intervention. Return a tensor [batch, vocab_size] if multi_token_generation is False, [batch, full_output_len] if multi_token_generation.
+    Perform a single forward pass with no intervention. Return a tensor [batch, full_output_len].
     """
-    # TODO: check whether this two if statement can be a single operation using the generation context but getting the vocab size for the first token only
-    if multi_token_generation:
-        # use generate function and return the full output
-        with model.generate(
-            max_new_tokens=30,
-            pad_token_id=pad_token_id,
-        ) as generator:
-            with generator.invoke(prompt) as invoker:
-                pass
-        ret = generator.output
-    else:
-        # use invoker and return a softmaxed tensor with shape: [batch, vocab_size]
-        with model.invoke(prompt) as invoker:
-            pass    # no action required
-        logits = invoker.output.logits[:, -1, :]    # getting only the predicted token (i.e. final token), keeping batchsize and vocab_size
-        ret = logits.softmax(dim=-1)        # has shape [batch, vocab_size]
+    # use generate function and return the full output
+    with model.generate(
+        max_new_tokens=50,
+        pad_token_id=pad_token_id,
+    ) as generator:
+        with generator.invoke(prompt) as invoker:
+            pass
+    ret = generator.output
 
     return ret
 
@@ -165,62 +156,19 @@ def replace_heads_w_avg(
     return output
 
 
-
-def compute_cie_single_token(
-    tokenizer: PreTrainedTokenizer,
-    config: dict[str, Any],
-    correct_labels,
-    probs_original,
-    probs_edited,
-
-):
-    """
-    Return the CIE matrix averaged accross all prompts, calculated as follow:
-    CIE(ij) = probability of correct_label token y (w/ edited model) - probability of correct_label token y (w/ original model). Some e.g.
-         e.g. CIE(ij) = 0.9 - 0.1 = 0.8      head has great effect
-         e.g. CIE(ij) = 0.3 - 0.1 = 0.2      head does not influence too much the output
-         e.g. CIE(ij) = 0.3 - 0.8 = -0.5     head contribute to the output in an inverse way
-    """
-    
-    correct_ids = list(map(lambda x: x[0], tokenizer(correct_labels)['input_ids']))
-
-    cie = torch.zeros([len(correct_ids), config['n_layers'], config['n_heads']])
-
-    for prompt_idx in range(len(correct_ids)):
-        for layer in range(config['n_layers']):
-            for head in range(config['n_heads']):
-                prob_correct_token_edited_model = probs_edited[
-                    prompt_idx, layer, head, correct_ids[prompt_idx]
-                ].item()
-                prob_correct_token_original_model = probs_original[
-                    prompt_idx, correct_ids[prompt_idx]
-                ].item()
-                cie[prompt_idx, layer, head] = prob_correct_token_edited_model - prob_correct_token_original_model
-
-
-    return cie.mean(dim=0)
-
-
-
 def _aie_loop(
     model: LanguageModel,
     tokenizer: PreTrainedTokenizer,
     config: dict[str, Any],
     main_pbar: tqdm,
-    multi_token_generation: bool,
     mean_activations: torch.Tensor,
     prompt: dict[str, torch.Tensor] | torch.Tensor,
     important_ids: list[int] | None,
     ) -> list[list[str | torch.Tensor]] | torch.Tensor:
     """
-    Returns, for each layer, for each head a string if multi_token_generation or a tensor (shape: vocab_size) if multi_token_generation = False. 
+    Returns, for each layer, for each head a string if multi_token_generation. 
     """
     
-    # if not multi_token_generation:
-        # will use a torch.tensor instead of layers_output and heads_output lists
-        # because all outputs have the same shape 
-    edited = torch.zeros([len(prompt), config['n_layers'], config['n_heads'], config['vocab_size']])
-
     inner_bar_layers = tqdm(
        range(config['n_layers']),
        total=config['n_layers'],
@@ -240,40 +188,28 @@ def _aie_loop(
             main_pbar.set_description(
                 f'Processing edited model (l: {layer_i}/{config["n_layers"]}, h: {head_j}/{config["n_heads"]})'
             )
-            if multi_token_generation:
-                # here the return value has already the softmaxed scored from the evaluator object
-                model_output = replace_heads_w_avg_multi_token(
-                    tokenized_prompt=prompt,
-                    layers_heads=[(layer_i, head_j)],
-                    avg_activations=[mean_activations[layer_i, head_j]],
-                    model=model,
-                    config=config,
-                    pad_token_id=tokenizer.pad_token_id,
-                )
-                # del batch_size
-                model_output = model_output.squeeze()
-                # get only output tokens
-                only_output_tokens = model_output[len(prompt) :]
-                heads_output.append(
-                    tokenizer.decode(only_output_tokens, skip_special_tokens = True)
-                )
-            else:
-                model_output = replace_heads_w_avg(
-                    tokenized_prompt=prompt,
-                    important_ids=important_ids,
-                    layers_heads=[(layer_i, head_j)],
-                    avg_activations=[mean_activations[layer_i, head_j]],
-                    model=model,
-                    config=config,
-                )
-                edited[:, layer_i, head_j, :] = model_output
+            # here the return value has already the softmaxed scored from the evaluator object
+            model_output = replace_heads_w_avg_multi_token(
+                tokenized_prompt=prompt,
+                layers_heads=[(layer_i, head_j)],
+                avg_activations=[mean_activations[layer_i, head_j]],
+                model=model,
+                config=config,
+                pad_token_id=tokenizer.pad_token_id,
+            )
+            # del batch_size
+            model_output = model_output.squeeze()
+            # get only output tokens
+            only_output_tokens = model_output[len(prompt) :]
+            heads_output.append(
+                tokenizer.decode(only_output_tokens, skip_special_tokens = True)
+            )
 
         layers_output.append(heads_output)
 
-    if multi_token_generation:
-        return layers_output
-    else:
-        return edited
+    return layers_output
+    # else:
+    #     return edited
 
 
 def _compute_scores_multi_token(
@@ -304,7 +240,6 @@ def _compute_scores_multi_token(
         model_output = simple_forward_pass(
             model=model, 
             prompt=tokenized_prompts[idx], 
-            multi_token_generation=True, 
             pad_token_id=tokenizer.pad_token_id,
         )
 
@@ -328,7 +263,6 @@ def _compute_scores_multi_token(
             tokenizer=tokenizer,
             config=config,
             main_pbar=pbar,
-            multi_token_generation=True,
             mean_activations=mean_activations,
             prompt=tokenized_prompts[idx],
             important_ids=None,
@@ -401,87 +335,21 @@ def _compute_scores_multi_token(
     return scores_original, scores_edited
 
 
-
-
-def _compute_scores_single_token(
-    model: LanguageModel,
-    tokenizer: PreTrainedTokenizer,
-    config: dict[str, Any],
-    tokenized_prompts: tuple[torch.Tensor], # tuple len = aie_support, size tensor Size([seq])
-    important_ids: list[int],
-    batch_size: int,
-    mean_activations: torch.Tensor,
-    ):
-    
-    # intervention
-    prompts_and_outputs_original = {
-        'prompt': [],
-        'output': [],
-    }
-    prompts_and_outputs_edited = {
-        'prompt': [],
-        'output': [],
-    }
-    for start_index in (pbar := tqdm(
-        range(0, len(tokenized_prompts), batch_size),
-        total = int(np.ceil(len(tokenized_prompts) / batch_size)),
-    )):
-        end_index = min(start_index + batch_size, len(tokenized_prompts))
-
-        current_batch_tokens, current_batch_important_ids = pad_input_and_ids(
-            tokenized_prompts=tokenized_prompts[start_index : end_index],
-            important_ids=important_ids[start_index : end_index],
-            max_len=256,
-            pad_token_id=tokenizer.pad_token_id,
-        )
-        pbar.set_description('Original forward pass')
-        # get the model's output [batch, vocab_size]
-        vocab = simple_forward_pass(model, current_batch_tokens, multi_token_generation=False)
-
-        prompts_and_outputs_original['prompt'].append(current_batch_tokens)
-        prompts_and_outputs_original['output'].append(vocab)
-
-        # no need to copy the prompt but reporting here for consistancy
-        prompts_and_outputs_edited['prompt'].append(current_batch_tokens)
-        pbar.set_description('Edited forward pass')
-
-        edited_vocabs = _aie_loop(
-            model=model,
-            tokenizer=tokenizer,
-            config=config,
-            main_pbar=pbar,
-            multi_token_generation=False,
-            mean_activations=mean_activations,
-            prompt=current_batch_tokens,
-            important_ids=current_batch_important_ids,
-        )
-        prompts_and_outputs_edited['output'].append(edited_vocabs)
-
-    # stack all the batchsizes
-    stacked_original_vocabs = torch.vstack(prompts_and_outputs_original['output'])
-    stacked_edited_vocabs = torch.vstack(prompts_and_outputs_edited['output'])
-
-    return stacked_original_vocabs, stacked_edited_vocabs 
-
-
-
 def compute_indirect_effect(
     model,
     tokenizer: PreTrainedTokenizer,
     config: dict[str, Any],
-    device: str,
     dataset: list[tuple[str, str]],
     mean_activations: torch.Tensor,
     ICL_examples: int = 4,
     batch_size: int = 32,
     aie_support: int = 25,
-    multi_token_generation: bool = False,
     evaluator: Evaluator | None = None,
     save_output_path: str | None = None,
 ):
     """Compute indirect effect on the provided dataset by comparing the prediction of the original model
     to the predicition of the modified model. Specifically, for the modified model, each attention head
-    activation is substituted with the corresponding mean_activation provided to measure the impacto 
+    activation is substituted with the corresponding mean_activation provided to measure the impact 
     on the final correct label predicition.
 
     Args:
@@ -513,47 +381,26 @@ def compute_indirect_effect(
     ]
     all_tokenized_prompt, all_important_ids, all_correct_labels = zip(*selected_examples)
 
-    if multi_token_generation:
-        assert evaluator is not None, 'Evaluator object is required when using multi token generation'
-        assert batch_size == 1, 'Batchsize > 1 is not supported when using multi_token_generation'
+    assert evaluator is not None, 'Evaluator object is required when using multi token generation'
+    assert batch_size == 1, 'Batchsize > 1 is not supported when using multi_token_generation'
 
-        scores_original, scores_edited = _compute_scores_multi_token(
-            model=model,
-            tokenizer=tokenizer,
-            config=config,
-            tokenized_prompts=all_tokenized_prompt,
-            mean_activations=mean_activations,
-            evaluator=evaluator,
-            save_output_path=save_output_path,
-        )
-    else:
-        scores_original, scores_edited = _compute_scores_single_token(
-            model=model,
-            tokenizer=tokenizer,
-            config=config,
-            tokenized_prompts=all_tokenized_prompt,
-            important_ids=all_important_ids,
-            batch_size=batch_size,
-            mean_activations=mean_activations,
-        )
-
+    scores_original, scores_edited = _compute_scores_multi_token(
+        model=model,
+        tokenizer=tokenizer,
+        config=config,
+        tokenized_prompts=all_tokenized_prompt,
+        mean_activations=mean_activations,
+        evaluator=evaluator,
+        save_output_path=save_output_path,
+    )
     
-    if multi_token_generation:
-        cie = torch.zeros([scores_original.shape[0], config['n_layers'], config['n_heads']])
-        for prompt_idx in range(scores_original.shape[0]):
-            for layer in range(config['n_layers']):
-                for head in range(config['n_heads']):
-                    cie[prompt_idx, layer, head] = scores_edited[prompt_idx, layer, head] - scores_original[prompt_idx]
+    cie = torch.zeros([scores_original.shape[0], config['n_layers'], config['n_heads']])
+    for prompt_idx in range(scores_original.shape[0]):
+        for layer in range(config['n_layers']):
+            for head in range(config['n_heads']):
+                cie[prompt_idx, layer, head] = scores_edited[prompt_idx, layer, head] - scores_original[prompt_idx]
 
-        cie = cie.mean(dim=0)
-    else:
-        cie = compute_cie_single_token(
-            tokenizer=tokenizer,
-            config=config,
-            correct_labels=all_correct_labels,
-            probs_original=scores_original,
-            probs_edited=scores_edited,
-        )
+    cie = cie.mean(dim=0)
     
     return cie, scores_original, scores_edited
 
