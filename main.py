@@ -39,7 +39,7 @@ def main(
         aie_support (int, optional): number of example to average over when computning CIE matrix. Defaults to 25.
         task_vector_eval_dim (int, optional): number of example for the final zero-shot evaluation. Defaults to 40.
         save_plot (bool, optional): whether to save a plot of the CIE matrix in `./output/plot/` dir. Defaults to True.
-        use_local_backups (bool, optional): when exists, do not compute mean_activation and CIE bt get the backup in the `./output/` dir. Defaults to False.
+        use_local_backups (bool, optional): when exists, do not compute mean_activation but get the backup in the `./output/` dir. Defaults to False.
         pre_append_instruction (str, optional): instruction to use before the prompt. Defaults to None.
     """
     # create directory for storage and models output
@@ -69,10 +69,6 @@ def main(
 
     print(f'{model_name} on {device} device')
     
-
-    # debug
-    icl_examples = 2
-    # take the first 10 element from dataset
     # generate prompts
     tok_ret, ids_ret, correct_labels = tokenize_ICL(
         tokenizer, ICL_examples = icl_examples, dataset = dataset,
@@ -113,27 +109,28 @@ def main(
         torch.save(mean_activations, path_to_mean_activations)
     
 
-    # get mean activations from the model (or stored ones if already exist)
-    if os.path.isfile(path_to_cie) and use_local_backups:
-        print(f'[x] Found CIE at {path_to_cie}')
-        cie = torch.load(path_to_cie)
-        cie = cie.to(device)
-    else:
-        # compute causal mediation analysis over attention heads
-        cie, _, _  = compute_indirect_effect(
-            model=model,
-            tokenizer=tokenizer,
-            config=config,
-            dataset=dataset, 
-            mean_activations=mean_activations,
-            ICL_examples = icl_examples,
-            batch_size=batch_size,
-            aie_support=aie_support,
-            evaluator=evaluator,
-            save_output_path=path_to_output_all,
-        )
-        torch.save(cie, path_to_cie)
-        print('[x] CIE output saved')
+    # # get mean activations from the model (or stored ones if already exist)
+    # if os.path.isfile(path_to_cie) and use_local_backups:
+    #     print(f'[x] Found CIE at {path_to_cie}')
+    #     cie = torch.load(path_to_cie)
+    #     cie = cie.to(device)
+    # else:
+    #     # compute causal mediation analysis over attention heads
+    cie, _, _  = compute_indirect_effect(
+        model=model,
+        tokenizer=tokenizer,
+        config=config,
+        dataset=dataset, 
+        mean_activations=mean_activations,
+        ICL_examples = icl_examples,
+        batch_size=batch_size,
+        aie_support=aie_support,
+        evaluator=evaluator,
+        save_output_path=path_to_output_all,
+    )
+    torch.save(cie, path_to_cie)
+    print('[x] CIE output saved')
+
 
     if save_plot:
         print('[x] Generating CIE plot')
