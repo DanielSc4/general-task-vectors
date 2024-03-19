@@ -213,22 +213,6 @@ def get_mean_activations(
     else:
         raise ValueError("Activations cannot be computed when there are no label of interest returned by the evaluator")
 
-    
-    # else:
-    #     all_outputs = torch.vstack(all_outputs)             # [batch, seq]
-    #
-    #     # getting the output token
-    #     only_output_tokens = all_outputs[:, -1]
-    #     # considering only the first token to evaluate the output
-    #     only_labels_tokens = torch.tensor([ele[0] for ele in tokenizer(correct_labels)['input_ids']])
-    #
-    #     correct_idx = (only_output_tokens == only_labels_tokens)
-    #     accuracy = correct_idx.sum() / len(correct_idx)
-    #     if correct_idx.sum() > 0:
-    #         print(f'[x] Model accuracy: {accuracy:.2f}, using {correct_idx.sum()} (out of {len(correct_idx)}) examples to compute mean activations')
-    #     else:
-    #         raise ValueError("Activations cannot be computed when model accuracy is 0%")
-
     # using only activations from correct prediction to compute the mean_activations
     correct_activations = all_activations[correct_idx]
 

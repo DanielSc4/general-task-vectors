@@ -10,5 +10,6 @@
     --icl_examples 0 \
     --batch_size 1 \
     --load_in_8bit \
+    --use_local_backups \
 )
 
