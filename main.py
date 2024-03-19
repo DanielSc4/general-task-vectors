@@ -25,6 +25,7 @@ def main(
     aie_support: int = 25,
     save_plot: bool = True,
     use_local_backups: bool = False,
+    pre_append_instruction: str | None = None
 ):
     """Main function to get the mean_attention, CIE on model and zero-shot results
 
@@ -39,6 +40,7 @@ def main(
         task_vector_eval_dim (int, optional): number of example for the final zero-shot evaluation. Defaults to 40.
         save_plot (bool, optional): whether to save a plot of the CIE matrix in `./output/plot/` dir. Defaults to True.
         use_local_backups (bool, optional): when exists, do not compute mean_activation and CIE bt get the backup in the `./output/` dir. Defaults to False.
+        pre_append_instruction (str, optional): instruction to use before the prompt. Defaults to None.
     """
     # create directory for storage and models output
     path_to_output = f'./output/{model_name.split("/")[1]}/{dataset_name}'
@@ -74,7 +76,7 @@ def main(
     # generate prompts
     tok_ret, ids_ret, correct_labels = tokenize_ICL(
         tokenizer, ICL_examples = icl_examples, dataset = dataset,
-        pre_append_instruction='Be as honest as possible',
+        pre_append_instruction=pre_append_instruction,
     )
 
     # create a subset with mean_support elements
