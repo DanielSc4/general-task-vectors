@@ -156,43 +156,6 @@ def replace_heads_w_avg(
     return output
 
 
-
-def compute_cie_single_token(
-    tokenizer: PreTrainedTokenizer,
-    config: dict[str, Any],
-    correct_labels,
-    probs_original,
-    probs_edited,
-
-):
-    """
-    Return the CIE matrix averaged accross all prompts, calculated as follow:
-    CIE(ij) = probability of correct_label token y (w/ edited model) - probability of correct_label token y (w/ original model). Some e.g.
-         e.g. CIE(ij) = 0.9 - 0.1 = 0.8      head has great effect
-         e.g. CIE(ij) = 0.3 - 0.1 = 0.2      head does not influence too much the output
-         e.g. CIE(ij) = 0.3 - 0.8 = -0.5     head contribute to the output in an inverse way
-    """
-    
-    correct_ids = list(map(lambda x: x[0], tokenizer(correct_labels)['input_ids']))
-
-    cie = torch.zeros([len(correct_ids), config['n_layers'], config['n_heads']])
-
-    for prompt_idx in range(len(correct_ids)):
-        for layer in range(config['n_layers']):
-            for head in range(config['n_heads']):
-                prob_correct_token_edited_model = probs_edited[
-                    prompt_idx, layer, head, correct_ids[prompt_idx]
-                ].item()
-                prob_correct_token_original_model = probs_original[
-                    prompt_idx, correct_ids[prompt_idx]
-                ].item()
-                cie[prompt_idx, layer, head] = prob_correct_token_edited_model - prob_correct_token_original_model
-
-
-    return cie.mean(dim=0)
-
-
-
 def _aie_loop(
     model: LanguageModel,
     tokenizer: PreTrainedTokenizer,

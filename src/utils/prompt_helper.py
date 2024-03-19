@@ -64,23 +64,27 @@ def tokenize_from_template(tokenizer, promtp_w_template: tuple[tuple[str, str]])
         list: index of every structural token and last sentence token
     """
     
-    full_tokenized = torch.LongTensor([tokenizer.bos_token_id])
+    full_tokenized = torch.LongTensor([[tokenizer.bos_token_id]])
     indexes = [0]
-    for prompt_ele in promtp_w_template:
-        tokenized = tokenizer(prompt_ele[0], return_tensors='pt').input_ids[0]
+
+    for prompt_str, prompt_type in promtp_w_template:
+        tokenized = tokenizer(prompt_str, return_tensors='pt').input_ids.type(torch.int64)
         full_tokenized = torch.cat(
-            (full_tokenized, tokenized), dim = -1,
+            (full_tokenized, tokenized), 
+            dim = -1,
         )
-        if prompt_ele[1] == 'structural':
+
+        if prompt_type == 'structural':
             # all the index of structural tokens must be included
             actual_idxs = list(
                 range(indexes[-1] + 1, len(tokenized) + indexes[-1] + 1)
             )
             indexes.extend(actual_idxs)
-        elif prompt_ele[1] == 'sentence':
+        elif prompt_type == 'sentence':
             # include only the last index of the sentence tokens
             indexes.append(indexes[-1] + len(tokenized))
 
+    full_tokenized = full_tokenized.squeeze() 
     return full_tokenized, indexes
 
 
@@ -107,20 +111,21 @@ def tokenize_ICL(
  
     prompts = []
 
-    if pre_append_instruction:
-        prompts.append(
-            (pre_append_instruction, 'sentence')
-        )
-
     for i in range(0, len(dataset), ICL_examples + 1):
         # select examples to end up in the prompt
         group = dataset[i : i + ICL_examples + 1]
         
         # if enough ICL examples in the split (or group), otherwise don't use them
         if len(group) > ICL_examples:
-            X = build_prompt_txt(
-                queries=list(map(lambda x: x[0], group)),
-                answers=list(map(lambda x: x[1], group))[:-1],
+            queries, answers = zip(*group)
+            
+            X = []
+            if pre_append_instruction:
+                X.append((pre_append_instruction, 'sentence'))
+                X.append(('\n', 'structural'))
+
+            X.extend(
+                build_prompt_txt(queries=queries,answers=answers)
             )
 
             # store prompt (X) and label (placed in 
@@ -131,19 +136,14 @@ def tokenize_ICL(
                 (X, group[-1][-1])  
             )
         
-    tokenized_and_ids = list(map(
-        lambda prmpt: tokenize_from_template(tokenizer=tokenizer, promtp_w_template=prmpt[0]),
-        prompts
-    ))
+    all_tokenized, all_ids, labels = [], [], []
+    for prompt_template, label in prompts:
+        tokenized_prompt, important_ids = tokenize_from_template(tokenizer=tokenizer, promtp_w_template=prompt_template)
+        all_tokenized.append(tokenized_prompt)
+        all_ids.append(important_ids)
+        labels.append(label)
     
-    labels = list(map(lambda x: x[1], prompts))
-    tokenized, ids = zip(*tokenized_and_ids, )
-
-
-    print(f'detokenized prompt: {tokenizer.decode(tokenized, skip_special_tokens = True)}')
-    print(f'labels: {labels}')
-
-    return tokenized, ids, labels
+    return all_tokenized, all_ids, labels
 
 
 def randomize_dataset(

@@ -68,23 +68,14 @@ def main(
     print(f'{model_name} on {device} device')
     
 
-    # # debug
-    # icl_examples = 2
-    
+    # debug
+    icl_examples = 2
+    # take the first 10 element from dataset
     # generate prompts
     tok_ret, ids_ret, correct_labels = tokenize_ICL(
         tokenizer, ICL_examples = icl_examples, dataset = dataset,
         pre_append_instruction='Be as honest as possible',
     )
-
-    # debug
-    print(tok_ret)
-    print(ids_ret)
-    print(correct_labels)
-    exit()
-
-
-
 
     # create a subset with mean_support elements
     print(f'[x] New dataset dimension after ICL: {len(tok_ret)}')
@@ -94,7 +85,6 @@ def main(
         for i in idx_for_mean
     ]
     tok_ret, ids_ret, correct_labels = zip(*selected_examples)
-
 
     # change default behaviour for evaluation strategy
     evaluator = Evaluator('meta-llama/LlamaGuard-7b', load_in_8bit=True)
