@@ -68,7 +68,7 @@ def replace_heads_w_avg_multi_token(
     """
 
     with model.generate(
-        max_new_tokens=150,
+        max_new_tokens=50,
         pad_token_id=pad_token_id,
     ) as generator:
         with generator.invoke(tokenized_prompt) as _:

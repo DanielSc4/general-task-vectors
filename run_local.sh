@@ -6,7 +6,7 @@
     --dataset_name joined-DX \
     --multi_token_generation \
     --mean_support 100 \
-    --aie_support 2 \
+    --aie_support 20 \
     --icl_examples 0 \
     --batch_size 1 \
     --load_in_8bit \

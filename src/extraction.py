@@ -69,7 +69,7 @@ def extract_activations(
     """
 
     with model.generate(
-        max_new_tokens=150,
+        max_new_tokens=50,
         pad_token_id=tokenizer.pad_token_id,
     ) as generator:
         with generator.invoke(tokenized_prompts) as invoker:
