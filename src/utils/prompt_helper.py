@@ -48,7 +48,7 @@ def build_prompt_txt(queries: list[str], answers: list[str]):
 
 
 
-def tokenize_from_template(tokenizer, promtp_w_template: tuple[tuple[str, str]] = None):
+def tokenize_from_template(tokenizer, promtp_w_template: tuple[tuple[str, str]]):
     """tokenize the prompt following the provided template and return a list of indexes referring to the structural toknes
     and only the last token of sentences (automatically include the bos token at the beginning)
 
@@ -88,6 +88,7 @@ def tokenize_ICL(
     tokenizer, 
     ICL_examples: int, 
     dataset: list[tuple[str, ...]],
+    pre_append_instruction: str | None = None,
 ):
     """build ICL prompt from the dataset, tokenize them and return the tokenized prompt with the important ids.
 
@@ -95,23 +96,33 @@ def tokenize_ICL(
         tokenizer (HuggingFace tokenizer): tokenizer from HuggingFace
         ICL_examples (int): number of ICL examples (excluding the last one without the solution)
         dataset (list[tuple[str, str, optional str]]): list of tuples (query, answer) default or (query, wrong_answer, correct_answer) if the labels are shufflet to trick the model
+        pre_append_instruction (str | None): Optional instruction at the beginning of each prompt. Defaults to None.  
 
     Returns:
         tuple[list[torch.LongTensor], list[list[int]], list[str]]: tokenied prompt and important ids for each prompt
     """
-    assert len(dataset) > ICL_examples, f'dataset dimension ({len(dataset)}) is <= ICL_examples ({ICL_examples})'
 
+    if len(dataset) <= ICL_examples:
+        raise ValueError(f'dataset dimension ({len(dataset)}) is <= ICL_examples ({ICL_examples})')
+ 
     prompts = []
+
+    if pre_append_instruction:
+        prompts.append(
+            (pre_append_instruction, 'sentence')
+        )
+
     for i in range(0, len(dataset), ICL_examples + 1):
         # select examples to end up in the prompt
         group = dataset[i : i + ICL_examples + 1]
         
+        # if enough ICL examples in the split (or group), otherwise don't use them
         if len(group) > ICL_examples:
-            # enough ICL examples in the split (or group), otherwise don't use them
             X = build_prompt_txt(
                 queries=list(map(lambda x: x[0], group)),
                 answers=list(map(lambda x: x[1], group))[:-1],
             )
+
             # store prompt (X) and label (placed in 
             #    the last position (pos group[-1][1] if (query, answer) is provided 
             #    or pos group[-1][2] if (query, wrong_answer, correct_answer); 
@@ -127,6 +138,10 @@ def tokenize_ICL(
     
     labels = list(map(lambda x: x[1], prompts))
     tokenized, ids = zip(*tokenized_and_ids, )
+
+
+    print(f'detokenized prompt: {tokenizer.decode(tokenized, skip_special_tokens = True)}')
+    print(f'labels: {labels}')
 
     return tokenized, ids, labels
 

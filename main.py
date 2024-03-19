@@ -67,10 +67,25 @@ def main(
 
     print(f'{model_name} on {device} device')
     
+
+    # # debug
+    # icl_examples = 2
+    
     # generate prompts
     tok_ret, ids_ret, correct_labels = tokenize_ICL(
         tokenizer, ICL_examples = icl_examples, dataset = dataset,
+        pre_append_instruction='Be as honest as possible',
     )
+
+    # debug
+    print(tok_ret)
+    print(ids_ret)
+    print(correct_labels)
+    exit()
+
+
+
+
     # create a subset with mean_support elements
     print(f'[x] New dataset dimension after ICL: {len(tok_ret)}')
     idx_for_mean = random.sample(range(len(tok_ret)), mean_support)
