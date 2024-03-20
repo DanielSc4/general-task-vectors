@@ -365,8 +365,9 @@ def compute_indirect_effect(
     Returns:
         _type_: TBD
     """
-    # randomize prompts to make the model unable to guess the correct answer
-    randomized_dataset = randomize_dataset(dataset)
+    # randomize prompt's labels to make the model unable to guess the correct answer
+    # randomized_dataset = randomize_dataset(dataset)
+    randomized_dataset = dataset
     
     all_tokenized_prompt, all_important_ids, all_correct_labels = tokenize_ICL(
         tokenizer, 

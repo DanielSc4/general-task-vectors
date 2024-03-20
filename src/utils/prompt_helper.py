@@ -10,8 +10,9 @@ def load_json_dataset(json_path):
 
 
 def build_prompt_txt(queries: list[str], answers: list[str]):
-    """Build the prompt following the default template. Provide a list of queries (length = n ICL examples + 1)
+    """Build the prompt following the default template. Provide a list of queries (length = n ICL examples)
     and a list of answers (length = n ICL examples)
+    [X] Last answer will not be used
 
     Args:
         queries (list[str]): queries (ICL examples + final query)
@@ -27,7 +28,7 @@ def build_prompt_txt(queries: list[str], answers: list[str]):
     middle = [('\nA:', 'structural'),]
     end = [('\n\n', 'structural'),]
 
-    for i in range(len(answers)):
+    for i in range(len(answers) - 1):
         full_prompt.extend(begin)
         full_prompt.append(
             (queries[i], 'sentence')
@@ -117,7 +118,7 @@ def tokenize_ICL(
         
         # if enough ICL examples in the split (or group), otherwise don't use them
         if len(group) > ICL_examples:
-            queries, answers = zip(*group)
+            queries, answers = zip(*group)      # TODO: fails if randomize dataset
             
             X = []
             if pre_append_instruction:

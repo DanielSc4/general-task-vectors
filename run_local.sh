@@ -3,7 +3,7 @@
 
 (yes | python -m main \
     --model_name stabilityai/stablelm-2-zephyr-1_6b \
-    --dataset_name joined-DX \
+    --dataset_name D-CoNa \
     --multi_token_generation \
     --mean_support 100 \
     --aie_support 20 \
