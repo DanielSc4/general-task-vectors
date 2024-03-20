@@ -74,16 +74,17 @@ def tokenize_from_template(tokenizer, promtp_w_template: tuple[tuple[str, str]])
             (full_tokenized, tokenized), 
             dim = -1,
         )
+        print()
 
         if prompt_type == 'structural':
             # all the index of structural tokens must be included
             actual_idxs = list(
-                range(indexes[-1] + 1, len(tokenized) + indexes[-1] + 1)
+                range(indexes[-1] + 1, tokenized.shape[-1] + indexes[-1] + 1)
             )
             indexes.extend(actual_idxs)
         elif prompt_type == 'sentence':
             # include only the last index of the sentence tokens
-            indexes.append(indexes[-1] + len(tokenized))
+            indexes.append(indexes[-1] + tokenized.shape[-1])
 
     full_tokenized = full_tokenized.squeeze() 
     return full_tokenized, indexes
