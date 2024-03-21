@@ -4,7 +4,6 @@ from tqdm import tqdm
 from transformers import AutoModelForSequenceClassification, AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 
-
 class Evaluator(object):
     
     _autoclass = {
@@ -13,6 +12,7 @@ class Evaluator(object):
     }
 
     known_models = {
+        # Note: the positive label corresposnds to the label of interest, i.e. the label where the model should be pushed to
         'facebook/roberta-hate-speech-dynabench-r4-target': {
             'type': 'classification',
             'args': {'positive_label': 0, 'negative_label': 1},
@@ -20,6 +20,10 @@ class Evaluator(object):
         'meta-llama/LlamaGuard-7b': {
             'type': 'generation',
             'args': {'positive_label': 'safe', 'negative_label': 'unsafe'},
+        },
+        'to implement semantic similarity': {
+            'type': 'similarity',
+            'args': {'positive_label': 'similar', 'negative_label': 'not similar'},
         },
     }
 

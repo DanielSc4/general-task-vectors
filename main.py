@@ -25,7 +25,7 @@ def main(
     aie_support: int = 25,
     save_plot: bool = True,
     use_local_backups: bool = False,
-    pre_append_instruction: str | None = None
+    pre_append_instruction: str | None = None,
 ):
     """Main function to get the mean_attention, CIE on model and zero-shot results
 

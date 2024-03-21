@@ -2,7 +2,6 @@ from typing import Any
 from nnsight import LanguageModel
 import torch
 from tqdm import tqdm
-import numpy as np
 import random
 import json
 
@@ -168,7 +167,7 @@ def _aie_loop(
     """
     Returns, for each layer, for each head a string if multi_token_generation. 
     """
-    
+
     inner_bar_layers = tqdm(
        range(config['n_layers']),
        total=config['n_layers'],
@@ -208,8 +207,6 @@ def _aie_loop(
         layers_output.append(heads_output)
 
     return layers_output
-    # else:
-    #     return edited
 
 
 def _compute_scores_multi_token(
@@ -275,14 +272,14 @@ def _compute_scores_multi_token(
     
 
     # Evaluation
-    label_of_interest = evaluator.negative_label
+    label_of_interest = evaluator.positive_label
 
     print('[x] Evaluating original model outputs')
-    evaluation_result = evaluator.get_evaluation(
+    evaluation_result_original = evaluator.get_evaluation(
         prompts=prompts_and_outputs_original['prompt'],
         generations=prompts_and_outputs_original['output'],
     )
-    score_of_interest = evaluation_result[label_of_interest]
+    score_of_interest = evaluation_result_original[label_of_interest]
     scores_original = torch.tensor(score_of_interest)       # shape: len(tokenized_prompts)
 
 
@@ -311,7 +308,7 @@ def _compute_scores_multi_token(
                 'input': prompts_and_outputs_original['prompt'][idx],
                 'original': {
                     'output': prompts_and_outputs_original['output'][idx],
-                    'eval': evaluation_result,
+                    'eval': evaluation_result_original,
                 },
                 'edited': [
                     (

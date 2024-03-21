@@ -74,7 +74,6 @@ def tokenize_from_template(tokenizer, promtp_w_template: tuple[tuple[str, str]])
             (full_tokenized, tokenized), 
             dim = -1,
         )
-        print()
 
         if prompt_type == 'structural':
             # all the index of structural tokens must be included
