@@ -112,13 +112,7 @@ def main(
         torch.save(mean_activations, path_to_mean_activations)
     
 
-    # # get mean activations from the model (or stored ones if already exist)
-    # if os.path.isfile(path_to_cie) and use_local_backups:
-    #     print(f'[x] Found CIE at {path_to_cie}')
-    #     cie = torch.load(path_to_cie)
-    #     cie = cie.to(device)
-    # else:
-    #     # compute causal mediation analysis over attention heads
+    # compute CIE
     cie, _, _  = compute_indirect_effect(
         model=model,
         tokenizer=tokenizer,
