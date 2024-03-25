@@ -258,7 +258,7 @@ class Evaluator(object):
             model_outputs.append(
                 self.detokenize(output.squeeze()[prompt_len:])
             )
-            print(f'{model_outputs[-1] = }')
+            # print(f'{model_outputs[-1] = }')
 
         clean_results = clean_output(
             outputs=model_outputs, 
