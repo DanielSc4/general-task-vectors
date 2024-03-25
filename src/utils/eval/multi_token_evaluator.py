@@ -133,7 +133,7 @@ class Evaluator(object):
         self,
         prompts,
         generations,
-        ) -> dict[str, list[int | float]]:
+        ) -> dict[str | int, list[int | float]]:
         """
         Get the model's outputs and returns a dict with `output` and `addition` keys. 
         - `output` is a list of positive | negative labels
@@ -208,7 +208,7 @@ class Evaluator(object):
         self,
         prompts: list[str] | None,
         generations: list[str],
-    ) -> dict[str, list[int | float]]:
+    ) -> dict[str | int, list[int | float]]:
 
         tokenized_prompts = self.tokenize(prompts, generations)
 
@@ -236,7 +236,7 @@ class Evaluator(object):
         generations: list[str],
         prompts: list[str] | None = None,
         **kwargs,
-    ) -> dict[str, list[int | float]]:
+    ) -> dict[str | int, list[int | float]]:
         """
         Evaluates a list of prompts with the specified model
         """

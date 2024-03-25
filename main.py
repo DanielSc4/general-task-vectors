@@ -86,6 +86,8 @@ def main(
 
     # change default behaviour for evaluation strategy
     evaluator = Evaluator('meta-llama/LlamaGuard-7b', load_in_8bit=True)
+    # set the label of interest
+    label_of_interest = evaluator.positive_label
 
     # get mean activations from the model (or stored ones if already exist)
     if os.path.isfile(path_to_mean_activations) and use_local_backups:
@@ -103,6 +105,7 @@ def main(
             device=device,
             batch_size=batch_size,
             evaluator=evaluator,
+            label_of_interest=label_of_interest,
             save_output_path=path_to_output_generation,
         )
         # store mean_activations
@@ -126,6 +129,7 @@ def main(
         batch_size=batch_size,
         aie_support=aie_support,
         evaluator=evaluator,
+        label_of_interest=label_of_interest,
         save_output_path=path_to_output_all,
     )
     torch.save(cie, path_to_cie)

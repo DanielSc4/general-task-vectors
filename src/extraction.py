@@ -108,6 +108,7 @@ def get_mean_activations(
         batch_size: int = 1,
         max_len: int = 256,
         evaluator: Evaluator | None = None,
+        label_of_interest: str | int | None = None,
         save_output_path: str | None = None,
     ):
     """Compute the average of all the model's activation on the provided prompts
@@ -129,6 +130,7 @@ def get_mean_activations(
 
     """
     assert evaluator is not None, 'Evaluator object is required when using multi token generation'
+    assert label_of_interest is not None, 'label_of_interest is required when using multi token generation'
 
     all_activations = []
     all_outputs = []
@@ -204,8 +206,6 @@ def get_mean_activations(
             json.dump(json_to_write, f, indent=4)
 
 
-    # assuming label == 1 -> negative output (i.e. using torch.ones)
-    label_of_interest = evaluator.negative_label
     correct_idx = [True if x == label_of_interest else False for x in evaluation_results['output']]
         
     if sum(correct_idx) > 0:

@@ -216,6 +216,7 @@ def _compute_scores_multi_token(
     tokenized_prompts: tuple[torch.Tensor], # tuple len = aie_support, size tensor Size([seq])
     mean_activations: torch.Tensor,
     evaluator: Evaluator,
+    label_of_interest: str | int | None = None,
     save_output_path: str | None = None,
 ) -> tuple[torch.Tensor, torch.Tensor]:     # TODO, controlla se effettivamente è così
 
@@ -272,8 +273,6 @@ def _compute_scores_multi_token(
     
 
     # Evaluation
-    label_of_interest = evaluator.positive_label
-
     print('[x] Evaluating original model outputs')
     evaluation_result_original = evaluator.get_evaluation(
         prompts=prompts_and_outputs_original['prompt'],
@@ -342,6 +341,7 @@ def compute_indirect_effect(
     batch_size: int = 32,
     aie_support: int = 25,
     evaluator: Evaluator | None = None,
+    label_of_interest: str | int | None = None,
     save_output_path: str | None = None,
 ):
     """Compute indirect effect on the provided dataset by comparing the prediction of the original model
@@ -389,6 +389,7 @@ def compute_indirect_effect(
         tokenized_prompts=all_tokenized_prompt,
         mean_activations=mean_activations,
         evaluator=evaluator,
+        label_of_interest=label_of_interest,
         save_output_path=save_output_path,
     )
     
