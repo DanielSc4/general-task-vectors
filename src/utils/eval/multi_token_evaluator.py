@@ -1,6 +1,7 @@
 import torch
 import warnings
 from tqdm import tqdm
+import json
 from transformers import AutoModelForSequenceClassification, AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 
@@ -13,6 +14,8 @@ class Evaluator(object):
 
     known_models = {
         # Note: the positive label corresposnds to the label of interest, i.e. the label where the model should be pushed to
+        # Note: custom_promtp_def is used to specify if the model has a custom prompt definition in `generate_prompt` method
+        #       If False, the model will use the default prompt
         'facebook/roberta-hate-speech-dynabench-r4-target': {
             'type': 'classification',
             'args': {'positive_label': 0, 'negative_label': 1},
@@ -20,10 +23,12 @@ class Evaluator(object):
         'meta-llama/LlamaGuard-7b': {
             'type': 'generation',
             'args': {'positive_label': 'safe', 'negative_label': 'unsafe'},
+            'custom_promtp_def': 'Guard'    # custom implemented chat_template (or non common use of it)
         },
-        'to implement semantic similarity': {
-            'type': 'similarity',
-            'args': {'positive_label': 'similar', 'negative_label': 'not similar'},
+        'google/gemma-2b-it': {
+            'type': 'generation',
+            'args': {'positive_label': 'Yes', 'negative_label': 'No'},
+            'custom_promtp_def': False,     # default chat using default_chat_template from the tokenizer
         },
     }
 
@@ -32,6 +37,7 @@ class Evaluator(object):
         evaluation_model_name: str = 'facebook/roberta-hate-speech-dynabench-r4-target',
         type_of_model: str | None = 'classification',
         load_in_8bit: bool = False,
+        task: str = '',
     ) -> None:
         """
         Create an evaluator with a specifed model.
@@ -47,6 +53,8 @@ class Evaluator(object):
 
         self.evaluation_fun = self._get_evaluation_gen if type_of_model == 'generation' else self._get_evaluation_class
         self.positive_label, self.negative_label = self.known_models[evaluation_model_name]['args'].values()
+        self.model_info = self.known_models[evaluation_model_name]
+        self.task = task    # evaluation task name when loading the template
         
         self.evaluation_model = self._autoclass[type_of_model].from_pretrained(
             evaluation_model_name,
@@ -63,6 +71,33 @@ class Evaluator(object):
             self.evaluation_model.to(self.device)
 
 
+    def _build_prompt_with_template(
+        self,
+        prompts: list[str],
+        generations: list[str],
+        template: dict | None,
+        ):
+
+        assert template is not None, 'A template is required when using the evaluation model'
+        # build ICL prompt style for the evaluation model 
+        template['examples']['inputs'][0] = template['instr'] + template['examples']['inputs'][0]
+        chat = []
+        for cont, lbl, in zip(*template['examples'].values()):
+            chat.append(
+                {"role": "user", "content": cont}
+            )
+            chat.append(
+                {"role": "assistant", "content": lbl}
+            )
+
+        chats = []
+        for prompt, gen in zip(prompts, generations):
+            tmp_chat = chat.copy()
+            tmp_chat.append({ "role": "user", "content": '\n'.join([prompt, gen])})
+            chats.append(tmp_chat)
+
+        return chats
+    
 
     def tokenize(
         self, 
@@ -73,18 +108,38 @@ class Evaluator(object):
         tokenize a list of strings and returns a list of input_ids
         """
         if prompts:
-            # concatenate prompts and generations according to the template
-            chats = [
-                (
-                    {"role": "user", "content": prmtp},
-                    {"role": "assistant", "content": gen},
-                ) for prmtp, gen in zip(prompts, generations)
+            # both the prompt and the generation are passed to the model
+            if self.model_info['custom_promtp_def']:
+                # where all the strange procedures for prompt builds are applied
+                if self.model_info['custom_promtp_def'] == 'Guard':
+                    chats = [
+                        (
+                            {"role": "user", "content": prmtp},
+                            {"role": "assistant", "content": gen},
+                        ) for prmtp, gen in zip(prompts, generations)
+                    ]
+                else:
+                    raise NotImplementedError(f"No implementation found for {self.model_info['custom_promtp_def']}")
+            else:
+                # read template for the evaluation task
+                with open(f'./data/eval_templates/{self.task}.json') as f:
+                    template = json.load(f)
+
+                chats = self._build_prompt_with_template(
+                    prompts=prompts,
+                    generations=generations,
+                    template=template,
+                )
+
+            tokenized = [
+                self.tokenizer.apply_chat_template(chat, return_tensors="pt").to(self.device) for chat in chats
             ]
-            tokenized = [self.tokenizer.apply_chat_template(chat, return_tensors="pt").to(self.device) for chat in chats]
         else:
+            # the models wants only the generation
             tokenized = [self.tokenizer(gen, return_tensors = 'pt').input_ids.to(self.device) for gen in generations]
 
         return tokenized
+
 
     def detokenize(
         self,
@@ -156,7 +211,7 @@ class Evaluator(object):
                 self.positive_label: [],
                 self.negative_label: [],
             }
-            # get the tokenization of positive and negative labelsele
+            # get the tokenization of positive and negative label
             for output, score in zip(outputs, scores):
                 if output.startswith(self.positive_label):
                     results['output'].append(self.positive_label)
