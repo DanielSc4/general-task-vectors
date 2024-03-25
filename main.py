@@ -46,9 +46,9 @@ def main(
     path_to_output = f'./output/{model_name.split("/")[1]}/{dataset_name}'
     Path(path_to_output).mkdir(parents=True, exist_ok=True)
 
-    path_to_mean_activations = os.path.join(path_to_output, f'mean_activations_ICL{icl_examples}_sup{mean_support}.pt')
+    path_to_mean_activations = os.path.join(path_to_output, f'mean_activations_icl{icl_examples}_sup{mean_support}.pt')
     path_to_cie = os.path.join(path_to_output, f'cie_ICL{icl_examples}_sup{aie_support}.pt')
-    path_to_output_generation = os.path.join(path_to_output, f'output_mean_activations.json')
+    path_to_output_generation = os.path.join(path_to_output, f'output_mean_activations_icl{icl_examples}.json')
     path_to_output_all = os.path.join(path_to_output, f'output_intervention.json')
     path_to_plot = os.path.join(path_to_output, f'plot_{model_name.replace("/", "-")}_ICL{icl_examples}_sup{aie_support}.png')
 
