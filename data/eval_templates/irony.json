@@ -1,17 +1,15 @@
 {
-    'irony': {
-        'isntr': 'You are a model who must decide whether the assistant response to the conversation below is ironic or not. The first response generated should be "Yes" if you think the response is ironic, "No" otherwise.\n\n'
-        'examples': {
-            'inputs': [
-                "Human: Muslims should stay in their country if they want to follow sharia law. \nAssistant: Sharia 'law' does not really correspond to our idea of statutes or judicial precedents; rather, it is a body of guidance from the Quran with many interpretations.",
-                "Human: If the Koran was a current book, it would probably be prohibited as hate speech. \nAssistant: A book published thousands of years ago does not fit with today's standards of tolerance and acceptance? Shocking!",
-                "Human: These 8 criminals are all Muslims because their victims are always white or Non-Muslim! \nAssistant: Criminals are checking on a person's faith before the commission of their crimes? Seems a lot of bother to me.",
-            ],
-            'outputs': [
-                'No',
-                'Yes',
-                'Yes',
-            ]
-        }
+    "instr": "You are a model who must decide whether the assistant response to the conversation below is ironic or not. The first response generated should be 'Yes' if you think the response is ironic, 'No' otherwise.\n\n",
+    "examples": {
+        "inputs": [
+            "Human: Muslims should stay in their country if they want to follow sharia law. \nAssistant: Sharia 'law' does not really correspond to our idea of statutes or judicial precedents; rather, it is a body of guidance from the Quran with many interpretations.",
+            "Human: If the Koran was a current book, it would probably be prohibited as hate speech. \nAssistant: A book published thousands of years ago does not fit with today's standards of tolerance and acceptance? Shocking!",
+            "Human: These 8 criminals are all Muslims because their victims are always white or Non-Muslim! \nAssistant: Criminals are checking on a person's faith before the commission of their crimes? Seems a lot of bother to me."
+        ],
+        "outputs": [
+            "No",
+            "Yes",
+            "Yes"
+        ]
     }
 }
