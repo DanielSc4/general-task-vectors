@@ -1,8 +1,8 @@
 #!/bin/bash
 #SBATCH --job-name=general_task_vector
-#SBATCH --time=3:00:00
+#SBATCH --time=30:00:00
 #SBATCH --mem=40GB
-#SBATCH --gpus-per-node=a100.20gb:1
+#SBATCH --gpus-per-node=a100:1
 #SBATCH --output=/home1/p313544/slurm_logs/%x.%j.out
 
 
@@ -32,11 +32,11 @@ echo "Executing python script..."
 
 (yes | python -m main \
     --model_name stabilityai/stablelm-2-zephyr-1_6b \
-    --dataset_name joined-DX \
+    --dataset_name XS_test \
     --multi_token_generation \
-    --mean_support 100 \
-    --aie_support 10 \
-    --icl_examples 0 \
+    --mean_support 70 \
+    --aie_support 20 \
+    --icl_examples 4 \
     --batch_size 1 \
     --load_in_8bit \
     --use_local_backups \
