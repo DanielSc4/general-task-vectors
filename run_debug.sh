@@ -6,7 +6,6 @@ echo "Running main"
 python -m main \
     --model_name openai-community/gpt2 \
     --dataset_name XS_test \
-    --multi_token_generation \
     --mean_support 4 \
     --aie_support 3 \
     --icl_examples 4 \
