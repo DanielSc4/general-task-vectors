@@ -11,6 +11,7 @@ python -m main \
     --aie_support 3 \
     --icl_examples 4 \
     --batch_size 1 \
+    --load_in_8bit \
 
 # echo "Running eval"
 # python -m eval \
