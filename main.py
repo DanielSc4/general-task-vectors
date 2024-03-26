@@ -5,7 +5,7 @@ import os
 import random
 import warnings
 
-from transformers import AutoModelForCausalLM, AutoTokenizer
+# from transformers import AutoModelForCausalLM, AutoTokenizer
 import seaborn as sns
 import matplotlib.pyplot as plt
 
@@ -85,7 +85,7 @@ def main(
     tok_ret, ids_ret, correct_labels = zip(*selected_examples)
 
     # change default behaviour for evaluation strategy
-    evaluator = Evaluator('meta-llama/LlamaGuard-7b', load_in_8bit=True)
+    evaluator = Evaluator('meta-llama/LlamaGuard-7b', load_in_8bit=load_in_8bit)
     # set the label of interest
     label_of_interest = evaluator.positive_label
 
@@ -132,7 +132,7 @@ def main(
 
     if save_plot:
         print('[x] Generating CIE plot')
-        ax = sns.heatmap(cie.cpu(), linewidth=0.5, cmap='RdBu', center=0)
+        _ = sns.heatmap(cie.cpu(), linewidth=0.5, cmap='RdBu', center=0)
         plt.title(f'plot_{model_name.replace("/", "-")}_support{aie_support}')
         plt.xlabel('head')
         plt.ylabel('layer')

@@ -39,9 +39,11 @@ def evaluate_tv_multi_token(
     config,
     prompts_from_dataset: list[tuple[str, str]],
     evaluator: Evaluator,
+    label_of_interest: str | int | None = None,
     print_examples = True,
 ):
     
+    label_of_interest
     all_tokenized_prompt, all_important_ids, _ = tokenize_ICL(
         tokenizer=tokenizer,
         ICL_examples=0,

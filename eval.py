@@ -16,20 +16,19 @@ def main(
     top_n_heads:int = 10,
     eval_dim: int = 111,
     load_in_8bit: bool = True,
-    ICL_examples: int = 0,
     print_examples: bool = True,
 ):
     """Evalutate task vectors using model, mean_activations and selecting top_n_heads from cie
+    Always use a 0-shot prompt for evaluation.
 
     Args:
         model_name (str): model name from HuggingFace
         dataset_name (str): dataset name without extension (.json)
         mean_activation_path (str): mean_activation file
         cie_path (str): cie file
+        top_n_heads (int, optional): number of top heads to select. Defaults to 10.
         eval_dim (int, optional): evaluation dataset dimension. Defaults to 10.
         load_in_8bit (bool, optional): loads the model in 8bit for computational efficency. Defaults to True.
-        corrupted_ICL (bool, optional): If False evaluate the model using zero-shot prompts, if true evaluates the model using a corrupted ICL prompt. Remember to choose ICL_examples > 0. Defaults to False.
-        ICL_examples (int, optional): Number of ICL examples in the corrupted prompt. Must be zero if corrupted_ICL is False (zero-shot evaluation). Defaults to 0.
         print_examples (bool, optional): print a summary and some examples at the end of the evaluation. Defaults to True.
     """
 
@@ -51,8 +50,9 @@ def main(
 
     idx_for_eval = random.sample(range(len(dataset)), eval_dim)
 
-
     evaluator = Evaluator('meta-llama/LlamaGuard-7b', load_in_8bit=True)
+    label_of_interest = evaluator.positive_label
+
 
     evaluate_tv_multi_token(
         mean_activation=mean_activations,
@@ -62,6 +62,7 @@ def main(
         config=config,
         prompts_from_dataset=[dataset[i] for i in idx_for_eval],
         evaluator=evaluator,
+        label_of_interest=label_of_interest,
         print_examples=print_examples,
     )
 
