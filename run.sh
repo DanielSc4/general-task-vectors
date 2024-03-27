@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=general_task_vector
-#SBATCH --time=30:00:00
+#SBATCH --time=48:00:00
 #SBATCH --mem=40GB
 #SBATCH --gpus-per-node=a100:1
 #SBATCH --output=/home1/p313544/slurm_logs/%x.%j.out
