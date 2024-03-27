@@ -22,5 +22,4 @@ python -m eval \
     --top_n_heads 10 \
     --eval_dim 10 \
     --load_in_8bit \
-    --print_examples \
 
