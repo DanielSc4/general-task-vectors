@@ -108,7 +108,7 @@ class Evaluator(object):
         self, 
         prompts: list[str] | None,
         generations: list[str],
-    ):
+    ) -> list[torch.Tensor]:
         """
         tokenize a list of strings and returns a list of input_ids
         """

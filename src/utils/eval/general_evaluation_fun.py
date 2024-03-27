@@ -40,8 +40,8 @@ def evaluate_tv_multi_token(
     prompts_from_dataset: list[tuple[str, str]],
     evaluator: Evaluator,
     label_of_interest: str | int | None = None,
-    print_examples = True,
 ):
+    assert label_of_interest is not None, 'Please provide a label of interest for evaluation'
     
     all_tokenized_prompt, all_important_ids, _ = tokenize_ICL(
         tokenizer=tokenizer,
@@ -86,48 +86,35 @@ def evaluate_tv_multi_token(
 
         decoded_prompt = tokenizer.decode(prompt, skip_special_tokens=True)
 
+        # get evaluation of the original and edited outputs
         eval_results = evaluator.get_evaluation(
             prompts=[decoded_prompt] * 2,
             generations=[only_output_original, only_output_edited],
         )
 
-        results.append({
+        # = evaluation_result[label_of_interest][0] 
+
+        struct_res = {
             "prompt": decoded_prompt,
-            "original_output": only_output_original,
-            "original_output_score": eval_results['output'][0],
-            "edited_output": only_output_edited,
-            "edited_output_score": eval_results['output'][1],
-        })
+            "original": {
+                "output": only_output_original,
+                "eval": {
+                    "label": eval_results['output'][0],
+                    "addition": eval_results['addition'][0],
+                    label_of_interest: eval_results[label_of_interest][0],
+                }
+            },
+            "edited": {
+                "output": only_output_edited,
+                "eval": {
+                    "label": eval_results['output'][1],
+                    "addition": eval_results['addition'][1],
+                    label_of_interest: eval_results[label_of_interest][1],
+                }
+            }
+        }
 
+        results.append(struct_res)
 
-
-    # Print here the evaluation results
-    print('------- Evaluation results -------')
-    original_scores = [s['original_output_score'] for s in results]
-    edited_scores = [s['edited_output_score'] for s in results]
-
-    print('Original model scores:')
-    for ele in set(original_scores):
-        count = original_scores.count(ele)
-        print(f'  Label {ele}: {count} out of {len(results)}. ({count / len(results) :.2f})')
-        
-    print('Edited model scores:')
-    for ele in set(edited_scores):
-        count = edited_scores.count(ele)
-        print(f'  Label {ele}: {count} out of {len(results)}. ({count / len(results) :.2f})')
-
-
-    if print_examples:
-        # print out min(10, 10% of the dataset) examples
-        idx_to_print = random.sample(
-            range(len(all_tokenized_prompt)),
-            min(10, int(np.ceil(0.1 * len(results)))),
-        )
-
-        for idx in idx_to_print:
-            print('Prompt: ' + results[idx]['prompt'].replace('\n', ' '))
-            print(f'  Original [score: {results[idx]["original_output_score"]}]: ' + results[idx]['original_output'].replace('\n', ' '))
-            print(f'  Edited   [score: {results[idx]["edited_output_score"]}]: ' + results[idx]['edited_output'].replace('\n', ' '))
-            
-    
+    return results
 
