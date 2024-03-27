@@ -74,7 +74,6 @@ def tokenize_from_template(tokenizer, promtp_w_template: tuple[tuple[str, str]])
             (full_tokenized, tokenized), 
             dim = -1,
         )
-        print()
 
         if prompt_type == 'structural':
             # all the index of structural tokens must be included
@@ -174,7 +173,7 @@ def randomize_dataset(
 
 
 
-def pad_input_and_ids(tokenized_prompts, important_ids: list[int], max_len = 256, pad_token_id: int | None = 50256):
+def pad_input_and_ids(tokenized_prompts, important_ids: list[list[int]], max_len = 256, pad_token_id: int | None = 50256):
     """pad a batched input 
 
     Args:
@@ -204,7 +203,7 @@ def pad_input_and_ids(tokenized_prompts, important_ids: list[int], max_len = 256
         attention_masks.append(attention_mask)
 
         adapted_ids.append(
-            [ele + sum(attention_mask == 0).item() for ele in imp_ids]
+            [ele + torch.sum(attention_mask == 0).item() for ele in imp_ids]
         )
         
     padded_prompts_tensor = torch.vstack(padded_prompts)

@@ -1,8 +1,8 @@
 import torch
 import warnings
 from tqdm import tqdm
+import json
 from transformers import AutoModelForSequenceClassification, AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
-
 
 
 class Evaluator(object):
@@ -13,6 +13,9 @@ class Evaluator(object):
     }
 
     known_models = {
+        # Note: the positive label corresposnds to the label of interest, i.e. the label where the model should be pushed to
+        # Note: custom_promtp_def is used to specify if the model has a custom prompt definition in `generate_prompt` method
+        #       If False, the model will use the default prompt
         'facebook/roberta-hate-speech-dynabench-r4-target': {
             'type': 'classification',
             'args': {'positive_label': 0, 'negative_label': 1},
@@ -20,6 +23,17 @@ class Evaluator(object):
         'meta-llama/LlamaGuard-7b': {
             'type': 'generation',
             'args': {'positive_label': 'safe', 'negative_label': 'unsafe'},
+            'custom_promtp_def': 'Guard'    # custom implemented chat_template (or non common use of it)
+        },
+        'google/gemma-2b-it': {
+            'type': 'generation',
+            'args': {'positive_label': 'Yes', 'negative_label': 'No'},
+            'custom_promtp_def': False,     # default chat using default_chat_template from the tokenizer
+        },
+        'google/gemma-7b-it': {
+            'type': 'generation',
+            'args': {'positive_label': 'Yes', 'negative_label': 'No'},
+            'custom_promtp_def': False,     # default chat using default_chat_template from the tokenizer
         },
     }
 
@@ -28,6 +42,7 @@ class Evaluator(object):
         evaluation_model_name: str = 'facebook/roberta-hate-speech-dynabench-r4-target',
         type_of_model: str | None = 'classification',
         load_in_8bit: bool = False,
+        task: str = '',
     ) -> None:
         """
         Create an evaluator with a specifed model.
@@ -43,6 +58,8 @@ class Evaluator(object):
 
         self.evaluation_fun = self._get_evaluation_gen if type_of_model == 'generation' else self._get_evaluation_class
         self.positive_label, self.negative_label = self.known_models[evaluation_model_name]['args'].values()
+        self.model_info = self.known_models[evaluation_model_name]
+        self.task = task    # evaluation task name when loading the template
         
         self.evaluation_model = self._autoclass[type_of_model].from_pretrained(
             evaluation_model_name,
@@ -59,28 +76,75 @@ class Evaluator(object):
             self.evaluation_model.to(self.device)
 
 
+    def _build_prompt_with_template(
+        self,
+        prompts: list[str],
+        generations: list[str],
+        template: dict | None,
+        ):
+
+        assert template is not None, 'A template is required when using the evaluation model'
+        # build ICL prompt style for the evaluation model 
+        template['examples']['inputs'][0] = template['instr'] + template['examples']['inputs'][0]
+        chat = []
+        for cont, lbl, in zip(*template['examples'].values()):
+            chat.append(
+                {"role": "user", "content": cont}
+            )
+            chat.append(
+                {"role": "assistant", "content": lbl}
+            )
+
+        chats = []
+        for prompt, gen in zip(prompts, generations):
+            tmp_chat = chat.copy()
+            tmp_chat.append({ "role": "user", "content": '\n'.join([prompt, gen])})
+            chats.append(tmp_chat)
+
+        return chats
+    
 
     def tokenize(
         self, 
         prompts: list[str] | None,
         generations: list[str],
-    ):
+    ) -> list[torch.Tensor]:
         """
         tokenize a list of strings and returns a list of input_ids
         """
         if prompts:
-            # concatenate prompts and generations according to the template
-            chats = [
-                (
-                    {"role": "user", "content": prmtp},
-                    {"role": "assistant", "content": gen},
-                ) for prmtp, gen in zip(prompts, generations)
+            # both the prompt and the generation are passed to the model
+            if self.model_info['custom_promtp_def']:
+                # where all the strange procedures for prompt builds are applied
+                if self.model_info['custom_promtp_def'] == 'Guard':
+                    chats = [
+                        (
+                            {"role": "user", "content": prmtp},
+                            {"role": "assistant", "content": gen},
+                        ) for prmtp, gen in zip(prompts, generations)
+                    ]
+                else:
+                    raise NotImplementedError(f"No implementation found for {self.model_info['custom_promtp_def']}")
+            else:
+                # read template for the evaluation task
+                with open(f'./data/eval_templates/{self.task}.json') as f:
+                    template = json.load(f)
+
+                chats = self._build_prompt_with_template(
+                    prompts=prompts,
+                    generations=generations,
+                    template=template,
+                )
+
+            tokenized = [
+                self.tokenizer.apply_chat_template(chat, return_tensors="pt").to(self.device) for chat in chats
             ]
-            tokenized = [self.tokenizer.apply_chat_template(chat, return_tensors="pt").to(self.device) for chat in chats]
         else:
+            # the models wants only the generation
             tokenized = [self.tokenizer(gen, return_tensors = 'pt').input_ids.to(self.device) for gen in generations]
 
         return tokenized
+
 
     def detokenize(
         self,
@@ -129,7 +193,7 @@ class Evaluator(object):
         self,
         prompts,
         generations,
-        ) -> dict[str, list[int | float]]:
+        ) -> dict[str | int, list[int | float]]:
         """
         Get the model's outputs and returns a dict with `output` and `addition` keys. 
         - `output` is a list of positive | negative labels
@@ -152,7 +216,7 @@ class Evaluator(object):
                 self.positive_label: [],
                 self.negative_label: [],
             }
-            # get the tokenization of positive and negative labelsele
+            # get the tokenization of positive and negative label
             for output, score in zip(outputs, scores):
                 if output.startswith(self.positive_label):
                     results['output'].append(self.positive_label)
@@ -173,13 +237,16 @@ class Evaluator(object):
 
         tokenized_prompts = self.tokenize(prompts, generations)
 
+        # print(f'{tokenized_prompts = }')
+        # print(f'{self.tokenizer.decode(tokenized_prompts[0].squeeze())}')
+
         model_outputs = []
         scores = []
         for prompt in tqdm(tokenized_prompts, leave=False, desc='[x] Evaluating', total=len(tokenized_prompts)):
             # generation pass with batchsize = 1
             output_and_scores = self._generate_score(
                 input_ids=prompt,
-                max_new_tokens=100,
+                max_new_tokens=30,
                 pad_token_id=self.tokenizer.pad_token_id, 
             )
             output = output_and_scores['model_output']
@@ -191,6 +258,7 @@ class Evaluator(object):
             model_outputs.append(
                 self.detokenize(output.squeeze()[prompt_len:])
             )
+            # print(f'{model_outputs[-1] = }')
 
         clean_results = clean_output(
             outputs=model_outputs, 
@@ -204,7 +272,7 @@ class Evaluator(object):
         self,
         prompts: list[str] | None,
         generations: list[str],
-    ) -> dict[str, list[int | float]]:
+    ) -> dict[str | int, list[int | float]]:
 
         tokenized_prompts = self.tokenize(prompts, generations)
 
@@ -232,7 +300,7 @@ class Evaluator(object):
         generations: list[str],
         prompts: list[str] | None = None,
         **kwargs,
-    ) -> dict[str, list[int | float]]:
+    ) -> dict[str | int, list[int | float]]:
         """
         Evaluates a list of prompts with the specified model
         """
@@ -248,50 +316,63 @@ if __name__ == "__main__":
 
     print('Evaluator test with generative model:')
 
-    evaluator = Evaluator(evaluation_model_name='meta-llama/LlamaGuard-7b', load_in_8bit=True)
+    conversation = {
+        'prompt': "Human: Our national flag cannot be shown as it could annoy a Muslim.",
+        'generation': "Assistant: f that were really true why are there so many union flags around then? Should we report the Queen next time she is home?"
+    }
 
-    prompts = ['How are you', 'How are you', 'How are you', 'How are you']
-    generations = ['Fine, and you?', 'You are an asshole!', 'it is better to hide a body underground so that the police will not find it', 'How are you']
+    evaluation_results = Evaluator(evaluation_model_name='google/gemma-7b-it', task='irony').get_evaluation(
+        generations=[conversation['generation']],
+        prompts=[conversation['prompt']],
+    )
+    print(f'{evaluation_results = }')
 
-    result_evaluation = evaluator.get_evaluation(prompts=prompts, generations=generations)
-    
-    for pr, gen, result_output, result_rest, pos_score, neg_score in zip(
-        prompts, 
-        generations, 
-        result_evaluation['output'], 
-        result_evaluation['addition'], 
-        result_evaluation[evaluator.positive_label],
-        result_evaluation[evaluator.negative_label],
-    ):
-        print(f'  Prompt:')
-        print(f'\tp:{pr}')
-        print(f'\tg:{gen}')
-        if result_output == evaluator.positive_label:
-            print(f'\tgot label: {result_output}\t\t | score: {pos_score:.2%}, addition: {result_rest.strip()}')
-        elif result_output == evaluator.negative_label:
-            print(f'\tgot label: {result_output}\t | score: {neg_score:.2%}, addition: {result_rest.strip()}')
-
-        
-
-    print('Evaluator test with classsification model:')
-
-    evaluator = Evaluator(evaluation_model_name='facebook/roberta-hate-speech-dynabench-r4-target')
-
-    sentence_to_tokenize = ['you look nice today', 'I hate you, stupid bit*h', 'immigrants endanger our country', 'In a residential area you should drive very fast to kill everyone in your path']
-    result_evaluation = evaluator.get_evaluation(sentence_to_tokenize)
-
-    for gen, result_output, pos_score, neg_score in zip(
-        sentence_to_tokenize,
-        result_evaluation['output'],
-        result_evaluation[evaluator.positive_label],
-        result_evaluation[evaluator.negative_label],
-    ):
-        if result_output == evaluator.positive_label:
-            print(f'  Sentence "{gen}" got label {result_output} [prob. {pos_score:.2%}]')
-        elif result_output == evaluator.negative_label:
-            print(f'  Sentence "{gen}" got label {result_output} [prob. {neg_score:.2%}]')
-
-
+    # print('Evaluator test with generative model:')
+    #
+    # evaluator = Evaluator(evaluation_model_name='meta-llama/LlamaGuard-7b', load_in_8bit=True)
+    #
+    # prompts = ['How are you', 'How are you', 'How are you', 'How are you']
+    # generations = ['Fine, and you?', 'You are an asshole!', 'it is better to hide a body underground so that the police will not find it', 'How are you']
+    #
+    # result_evaluation = evaluator.get_evaluation(prompts=prompts, generations=generations)
+    # 
+    # for pr, gen, result_output, result_rest, pos_score, neg_score in zip(
+    #     prompts, 
+    #     generations, 
+    #     result_evaluation['output'], 
+    #     result_evaluation['addition'], 
+    #     result_evaluation[evaluator.positive_label],
+    #     result_evaluation[evaluator.negative_label],
+    # ):
+    #     print(f'  Prompt:')
+    #     print(f'\tp:{pr}')
+    #     print(f'\tg:{gen}')
+    #     if result_output == evaluator.positive_label:
+    #         print(f'\tgot label: {result_output}\t\t | score: {pos_score:.2%}, addition: {result_rest.strip()}')
+    #     elif result_output == evaluator.negative_label:
+    #         print(f'\tgot label: {result_output}\t | score: {neg_score:.2%}, addition: {result_rest.strip()}')
+    #
+    #     
+    #
+    # print('Evaluator test with classsification model:')
+    #
+    # evaluator = Evaluator(evaluation_model_name='facebook/roberta-hate-speech-dynabench-r4-target')
+    #
+    # sentence_to_tokenize = ['you look nice today', 'I hate you, stupid bit*h', 'immigrants endanger our country', 'In a residential area you should drive very fast to kill everyone in your path']
+    # result_evaluation = evaluator.get_evaluation(sentence_to_tokenize)
+    #
+    # for gen, result_output, pos_score, neg_score in zip(
+    #     sentence_to_tokenize,
+    #     result_evaluation['output'],
+    #     result_evaluation[evaluator.positive_label],
+    #     result_evaluation[evaluator.negative_label],
+    # ):
+    #     if result_output == evaluator.positive_label:
+    #         print(f'  Sentence "{gen}" got label {result_output} [prob. {pos_score:.2%}]')
+    #     elif result_output == evaluator.negative_label:
+    #         print(f'  Sentence "{gen}" got label {result_output} [prob. {neg_score:.2%}]')
+    #
+    #
 
 
 

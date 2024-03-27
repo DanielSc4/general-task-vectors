@@ -39,7 +39,8 @@ def load_model_and_tokenizer(
         model = LanguageModel(
             'gpt2', 
             device_map=device if not load_in_8bit else {'':0}, 
-            load_in_8bit=load_in_8bit
+            quantization_config=BitsAndBytesConfig(load_in_8bit=True) if load_in_8bit else None,
+            low_cpu_mem_usage=True if load_in_8bit else None,
         )
         # providing a standard config
         std_CONFIG = {
@@ -62,7 +63,8 @@ def load_model_and_tokenizer(
         model = LanguageModel(
             model_name, 
             device_map=device if not load_in_8bit else {'':0}, 
-            load_in_8bit=load_in_8bit
+            quantization_config=BitsAndBytesConfig(load_in_8bit=True) if load_in_8bit else None,
+            low_cpu_mem_usage=True if load_in_8bit else None,
         )
         std_CONFIG = {
             'n_heads': model.config.n_head,
@@ -84,7 +86,8 @@ def load_model_and_tokenizer(
         model = LanguageModel(
             model_name, 
             device_map=device if not load_in_8bit else {'':0}, 
-            load_in_8bit=load_in_8bit
+            quantization_config=BitsAndBytesConfig(load_in_8bit=True) if load_in_8bit else None,
+            low_cpu_mem_usage=True if load_in_8bit else None,
         )
         std_CONFIG = {
             'n_heads': model.config.num_attention_heads,
@@ -106,7 +109,8 @@ def load_model_and_tokenizer(
         model = LanguageModel(
             model_name, 
             device_map=device if not load_in_8bit else {'':0}, 
-            load_in_8bit=load_in_8bit
+            quantization_config=BitsAndBytesConfig(load_in_8bit=True) if load_in_8bit else None,
+            low_cpu_mem_usage=True if load_in_8bit else None,
         )
         std_CONFIG = {
             'n_heads': model.config.num_attention_heads,
@@ -128,7 +132,8 @@ def load_model_and_tokenizer(
         model = LanguageModel(
             model_name, 
             device_map=device if not load_in_8bit else {'':0},
-            load_in_8bit=load_in_8bit
+            quantization_config=BitsAndBytesConfig(load_in_8bit=True) if load_in_8bit else None,
+            low_cpu_mem_usage=True if load_in_8bit else None,
         )
         std_CONFIG = {
             'n_heads': model.config.num_attention_heads,
@@ -176,8 +181,8 @@ def load_model_and_tokenizer(
             model_name, 
             device_map=device if not load_in_8bit else {'':0}, 
             trust_remote_code = True, 
-            load_in_8bit=load_in_8bit,
-            torch_dtype=torch.bfloat16 if not load_in_8bit else torch.float32,
+            quantization_config=BitsAndBytesConfig(load_in_8bit=True) if load_in_8bit else None,
+            low_cpu_mem_usage=True if load_in_8bit else None,
         )
         std_CONFIG = {
             'n_heads': model.config.num_attention_heads,

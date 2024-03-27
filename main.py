@@ -5,7 +5,7 @@ import os
 import random
 import warnings
 
-from transformers import AutoModelForCausalLM, AutoTokenizer
+# from transformers import AutoModelForCausalLM, AutoTokenizer
 import seaborn as sns
 import matplotlib.pyplot as plt
 
@@ -25,7 +25,7 @@ def main(
     aie_support: int = 25,
     save_plot: bool = True,
     use_local_backups: bool = False,
-    pre_append_instruction: str | None = None
+    pre_append_instruction: str | None = None,
 ):
     """Main function to get the mean_attention, CIE on model and zero-shot results
 
@@ -46,9 +46,9 @@ def main(
     path_to_output = f'./output/{model_name.split("/")[1]}/{dataset_name}'
     Path(path_to_output).mkdir(parents=True, exist_ok=True)
 
-    path_to_mean_activations = os.path.join(path_to_output, f'mean_activations_ICL{icl_examples}_sup{mean_support}.pt')
+    path_to_mean_activations = os.path.join(path_to_output, f'mean_activations_icl{icl_examples}_sup{mean_support}.pt')
     path_to_cie = os.path.join(path_to_output, f'cie_ICL{icl_examples}_sup{aie_support}.pt')
-    path_to_output_generation = os.path.join(path_to_output, f'output_mean_activations.json')
+    path_to_output_generation = os.path.join(path_to_output, f'output_mean_activations_icl{icl_examples}.json')
     path_to_output_all = os.path.join(path_to_output, f'output_intervention.json')
     path_to_plot = os.path.join(path_to_output, f'plot_{model_name.replace("/", "-")}_ICL{icl_examples}_sup{aie_support}.png')
 
@@ -85,7 +85,9 @@ def main(
     tok_ret, ids_ret, correct_labels = zip(*selected_examples)
 
     # change default behaviour for evaluation strategy
-    evaluator = Evaluator('meta-llama/LlamaGuard-7b', load_in_8bit=True)
+    evaluator = Evaluator('meta-llama/LlamaGuard-7b', load_in_8bit=load_in_8bit)
+    # set the label of interest
+    label_of_interest = evaluator.positive_label
 
     # get mean activations from the model (or stored ones if already exist)
     if os.path.isfile(path_to_mean_activations) and use_local_backups:
@@ -103,19 +105,14 @@ def main(
             device=device,
             batch_size=batch_size,
             evaluator=evaluator,
+            label_of_interest=label_of_interest,
             save_output_path=path_to_output_generation,
         )
         # store mean_activations
         torch.save(mean_activations, path_to_mean_activations)
     
 
-    # # get mean activations from the model (or stored ones if already exist)
-    # if os.path.isfile(path_to_cie) and use_local_backups:
-    #     print(f'[x] Found CIE at {path_to_cie}')
-    #     cie = torch.load(path_to_cie)
-    #     cie = cie.to(device)
-    # else:
-    #     # compute causal mediation analysis over attention heads
+    # compute CIE
     cie, _, _  = compute_indirect_effect(
         model=model,
         tokenizer=tokenizer,
@@ -126,6 +123,7 @@ def main(
         batch_size=batch_size,
         aie_support=aie_support,
         evaluator=evaluator,
+        label_of_interest=label_of_interest,
         save_output_path=path_to_output_all,
     )
     torch.save(cie, path_to_cie)
@@ -134,7 +132,7 @@ def main(
 
     if save_plot:
         print('[x] Generating CIE plot')
-        ax = sns.heatmap(cie.cpu(), linewidth=0.5, cmap='RdBu', center=0)
+        _ = sns.heatmap(cie.cpu(), linewidth=0.5, cmap='RdBu', center=0)
         plt.title(f'plot_{model_name.replace("/", "-")}_support{aie_support}')
         plt.xlabel('head')
         plt.ylabel('layer')
