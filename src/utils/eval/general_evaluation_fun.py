@@ -43,7 +43,6 @@ def evaluate_tv_multi_token(
     print_examples = True,
 ):
     
-    label_of_interest
     all_tokenized_prompt, all_important_ids, _ = tokenize_ICL(
         tokenizer=tokenizer,
         ICL_examples=0,
