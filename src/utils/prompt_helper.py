@@ -2,6 +2,8 @@ import torch
 import random
 import json
 
+from transformers import PreTrainedTokenizer
+
 
 def load_json_dataset(json_path):
     with open(json_path, encoding='utf-8') as file:
@@ -9,7 +11,11 @@ def load_json_dataset(json_path):
     return dataset
 
 
-def build_prompt_txt(queries: list[str], answers: list[str]):
+def build_prompt_txt(
+        queries: list[str], 
+        answers: list[str],
+        pre_append_instruction: str | None = None,
+    ):
     """Build the prompt following the default template. Provide a list of queries (length = n ICL examples)
     and a list of answers (length = n ICL examples)
     [X] Last answer will not be used
@@ -17,11 +23,21 @@ def build_prompt_txt(queries: list[str], answers: list[str]):
     Args:
         queries (list[str]): queries (ICL examples + final query)
         answers (list[str]): answers (ICL examples)
+        pre_append_instruction (str | None): Optional instruction at the beginning of each prompt. Defaults to None.  
 
     Returns:
         full_prompt: full prompt following the default template with notation
     """
+    assert len(queries) == len(answers) + 1, 'queries and answers must have the same length'
+
     full_prompt = []
+    if pre_append_instruction:
+        full_prompt.append(
+            (pre_append_instruction, 'sentence')
+        )
+        full_prompt.append(
+            ('\n', 'structural')
+        )
 
     # prompt default template for structural parts
     begin = [('Q:', 'structural'),]
@@ -90,27 +106,37 @@ def tokenize_from_template(tokenizer, promtp_w_template: tuple[tuple[str, str]])
 
 
 def tokenize_ICL(
-    tokenizer, 
+    tokenizer: PreTrainedTokenizer, 
     ICL_examples: int, 
-    dataset: list[tuple[str, ...]],
+    dataset: list[tuple[str, str | None]],
     pre_append_instruction: str | None = None,
 ):
-    """build ICL prompt from the dataset, tokenize them and return the tokenized prompt with the important ids.
+    """build ICL prompt from the dataset, tokenize it and return the tokenized prompt with the important ids.
 
     Args:
-        tokenizer (HuggingFace tokenizer): tokenizer from HuggingFace
+        tokenizer (PreTrainedTokenizer): tokenizer from HuggingFace
         ICL_examples (int): number of ICL examples (excluding the last one without the solution)
-        dataset (list[tuple[str, str, optional str]]): list of tuples (query, answer) default or (query, wrong_answer, correct_answer) if the labels are shufflet to trick the model
+        dataset (list[tuple[str, optional str]]): list of tuples (query, answer).
         pre_append_instruction (str | None): Optional instruction at the beginning of each prompt. Defaults to None.  
 
     Returns:
-        tuple[list[torch.LongTensor], list[list[int]], list[str]]: tokenied prompt and important ids for each prompt
+        ```python
+        {
+            "tokenized_prompts": list[torch.LongTensor],    # tokenized prompts with ICL
+            "important_ids": list[list[int]],               # important ids for each prompt
+            "tokenized_prompts_no_ICL": list[torch.LongTensor],     # tokenized prompts without ICL (same as tokenized_prompts if ICL_examples == 0)
+            "important_ids_no_ICL": list[list[int]],                # important ids for each prompt without ICL (same as important_ids if ICL_examples == 0)
+            "correct_labels": list[str],                        # correct labels for each prompt
+        }
+        ```
     """
 
     if len(dataset) <= ICL_examples:
         raise ValueError(f'dataset dimension ({len(dataset)}) is <= ICL_examples ({ICL_examples})')
- 
+
     prompts = []
+    prompts_no_ICL = []
+    labels = []
 
     for i in range(0, len(dataset), ICL_examples + 1):
         # select examples to end up in the prompt
@@ -118,59 +144,45 @@ def tokenize_ICL(
         
         # if enough ICL examples in the split (or group), otherwise don't use them
         if len(group) > ICL_examples:
-            queries, answers = zip(*group)      # TODO: fails if randomize dataset
+            queries, answers = zip(*group)
             
-            X = []
-            if pre_append_instruction:
-                X.append((pre_append_instruction, 'sentence'))
-                X.append(('\n', 'structural'))
+            # build ICL prompt with pre_append_instruction + queries + answers + ... + last_query
+            X_ICL = build_prompt_txt(queries=queries,answers=answers)
+            # store ICL prompt and label (last answer)
+            prompts.append(X_ICL)
 
-            X.extend(
-                build_prompt_txt(queries=queries,answers=answers)
-            )
+            # build prompt without ICL examples and without pre_append_instruction (last_query only)
+            last_query = queries[-1]
+            X_no_ICL = build_prompt_txt(queries=[last_query], answers=[]) 
+            prompts_no_ICL.append(X_no_ICL)
 
-            # store prompt (X) and label (placed in 
-            #    the last position (pos group[-1][1] if (query, answer) is provided 
-            #    or pos group[-1][2] if (query, wrong_answer, correct_answer); 
-            # using -1 to get both of them.
-            prompts.append(
-                (X, group[-1][-1])  
-            )
-        
-    all_tokenized, all_ids, labels = [], [], []
-    for prompt_template, label in prompts:
-        tokenized_prompt, important_ids = tokenize_from_template(tokenizer=tokenizer, promtp_w_template=prompt_template)
+            prompt_label = answers[-1]
+            labels.append(prompt_label)
+
+    # tokenize every prompt and store the important ids
+    all_tokenized, all_ids = [], []
+    all_tokenized_no_ICL, all_ids_no_ICL = [], []
+    for prompt_template, prompts_no_ICL_template in zip(prompts, prompts_no_ICL):
+        tokenized_prompt, important_ids = tokenize_from_template(
+            tokenizer=tokenizer, 
+            promtp_w_template=prompt_template
+        )
         all_tokenized.append(tokenized_prompt)
         all_ids.append(important_ids)
-        labels.append(label)
+        tokenized_prompts_no_ICL, important_ids_no_ICL = tokenize_from_template(
+            tokenizer=tokenizer, 
+            promtp_w_template=prompts_no_ICL_template
+        )
+        all_tokenized_no_ICL.append(tokenized_prompts_no_ICL)
+        all_ids_no_ICL.append(important_ids_no_ICL)
     
-    return all_tokenized, all_ids, labels
-
-
-def randomize_dataset(
-        dataset: list[tuple[str, str]]
-    ):
-    """shuffle the second column (labels) and copy the original column to a third one keeping the correct label
-    e.g. for antonym: (good, bad) -> (good, funny, bad)
-
-    Args:
-        dataset (list[tuple[str, str]] | list[tuple[str, str]]): dataset with labels to shuffle 
-
-    Returns:
-        list[tuple[str, str, str]]: dataset with the (query, random label, correct label)
-    """
-    shuffled = list(map(lambda x: x[1], dataset))
-    random.shuffle(shuffled)
-
-    new_dataset = list(
-        zip(
-            list(map(lambda x: x[0], dataset)),     # input x
-            shuffled,     # new shuffled label (that make no sense)
-            list(map(lambda x: x[1], dataset)),     # old correct label
-    ))
-    
-    return new_dataset
-
+    return {
+        "tokenized_prompts": all_tokenized,
+        "important_ids": all_ids,
+        "tokenized_prompts_no_ICL": all_tokenized_no_ICL,
+        "important_ids_no_ICL": all_ids_no_ICL,
+        "correct_labels": labels,
+    }
 
 
 def pad_input_and_ids(tokenized_prompts, important_ids: list[list[int]], max_len = 256, pad_token_id: int | None = 50256):
