@@ -28,9 +28,39 @@ def get_attribution_patching(
         dataset=dataset,
         pre_append_instruction=None,
     )
-    # check what's inside the tokenized_dict
-    for key, value in tokenized_dict.items():
-        print(f'{key}: {value}')
+
+    for idx in range(len(tokenized_dict['tokenized_prompts'])):
+        # extract activations from the ICL_prompt forward pass
+        activations_dict = extract_activations(
+            tokenized_prompts=tokenized_dict['tokenized_prompts'][idx],
+            model=model,
+            config=config,
+            tokenizer=tokenizer,
+            return_gradient=False,
+        )
+        activations = activations_dict['activations']
+        output = activations_dict['output']
+        print(f'{activations.shape = }')
+        print(f'{output.shape = }')
+
+        print('-------')
+        # extract activations and gradients from the NON ICL forward pass
+        activations_dict_no_ICL = extract_activations(
+            tokenized_prompts=tokenized_dict['tokenized_prompts_no_ICL'][idx],
+            model=model,
+            config=config,
+            tokenizer=tokenizer,
+            return_gradient=True,
+        )
+        activations_no_ICL = activations_dict_no_ICL['activations']
+        output_no_ICL = activations_dict_no_ICL['output']
+        gradients_no_ICL = activations_dict_no_ICL['gradients']
+        print(f'{activations_no_ICL.shape = }')
+        print(f'{output_no_ICL.shape = }')
+        print(f'{gradients_no_ICL.shape = }')
+
+        exit()
+    
 
     return 0, 0
 

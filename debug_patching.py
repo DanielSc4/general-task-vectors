@@ -22,10 +22,9 @@ if __name__ == '__main__':
         load_in_8bit=is_cuda,
     )
 
-    ICL_tokenized = tokenizer(ICL_prompt, return_tensors='pt').input_ids
-    normal_tokenized = tokenizer(normal_prompt, return_tensors='pt').input_ids
+    tokenized_prompts = tokenizer(ICL_prompt, return_tensors='pt')
 
-    activations, outputs = get_attribution_patching(
+    _ = get_attribution_patching(
         model=model,
         tokenizer=tokenizer,
         config=config,

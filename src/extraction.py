@@ -27,7 +27,7 @@ def filter_activations(activation, important_ids):
     return activation
 
 
-def split_activation(activations, config):
+def split_activation(activations, config) -> torch.Tensor:
     """split the residual stream (d_model) into n_heads activations for each layer
 
     Args:
@@ -53,8 +53,8 @@ def extract_activations(
         model: LanguageModel, 
         config: dict[str, Any],
         tokenizer: PreTrainedTokenizer,
-        last_token_only: bool = False,
-    ):
+        return_gradient: bool = False,
+    ) -> dict[str, torch.Tensor]:
     """Extract the activation and the output produced from the model using the tokenized prompts provided
 
     Args:
@@ -65,8 +65,17 @@ def extract_activations(
         device (str): device
 
     Returns:
-        tuple[list[torch.Tensor], torch.Tensor]: tuple corresponding to the activations (batch, n_layers, n_heads, seq, d_head) and the model output [batch, seq]
+        dict[str, torch.Tensor | None]: dictionary containing the activations, output and gradients if requested
+        ```python
+        {
+            'activations': torch.Tensor,
+            'output': torch.Tensor,
+            'gradients': torch.Tensor       # Only if return_gradient
+        }
+        ```
     """
+
+    #         tuple[torch.Tensor, torch.Tensor, ]: tuple corresponding to the activations (batch, n_layers, n_heads, seq, d_head) and the model output [batch, seq]
 
     with model.generate(
         max_new_tokens=50,
@@ -74,27 +83,44 @@ def extract_activations(
     ) as generator:
         with generator.invoke(tokenized_prompts) as invoker:
             layer_attn_activations = []
+            layer_attn_gradients = []
             for layer_i in range(len(config['attn_hook_names'])):
                 # pbar.set_description(f"[x] Extracting activations (layer: {layer_i:02d}/{len(config['attn_hook_names'])})")
                 layer_attn_activations.append(
                     rgetattr(model, config['attn_hook_names'][layer_i]).input[0][0].save()       # before: *_i]).output.save() torch.size(batch, seq, hidden) 
                 )
-    # get the values from the activations
+
+                if return_gradient:
+                    layer_attn_gradients.append(
+                        rgetattr(model, config['attn_hook_names'][layer_i]).input[0][0].grad.save()
+                    )
+        output = generator.output.save()
+
     layer_attn_activations = [att.value for att in layer_attn_activations]
 
-    if not isinstance(layer_attn_activations[0], torch.Tensor):
-        # take the first element (should be the hidden tensor according to 
-        # https://github.com/huggingface/transformers/blob/224ab70969d1ac6c549f0beb3a8a71e2222e50f7/src/transformers/models/gpt2/modeling_gpt2.py#L341)
-        layer_attn_activations = [att[0] for att in layer_attn_activations]
-
-    output = generator.output   # contains also the prompt
 
     # from hidden state split heads and permute: batch, n_layers, tokens, n_heads, d_head -> batch, n_layers, n_heads, tokens, d_head
     attn_activations = split_activation(layer_attn_activations, config)
-    if last_token_only:
-        attn_activations = attn_activations[:, :, :, -1, :]
+    attn_activations = attn_activations[:, :, :, -1, :]
 
-    return attn_activations, output
+    if return_gradient:
+        layer_attn_gradients = [grad.value for grad in layer_attn_gradients]
+
+        attn_gradients = split_activation(layer_attn_gradients, config)
+        # get the gradient of the last token only
+        attn_gradients = attn_gradients[:, :, :, -1, :]
+
+        return {
+            'activations': attn_activations,
+            'output': output,
+            'gradients': attn_gradients,
+        }
+    else:
+        return {
+            'activations': attn_activations,
+            'output': output,
+        }
+
 
 
 def get_mean_activations(
@@ -156,13 +182,14 @@ def get_mean_activations(
             # avoid to pad the input when batch_size == 1 and use it as is
             current_batch_tokens = tokenized_prompts[start_index].to(device)
 
-        activations, outputs = extract_activations(
+        activations_dict = extract_activations(
             tokenized_prompts=current_batch_tokens, 
             model=model, 
             config=config,
             tokenizer=tokenizer,
-            last_token_only=True,
         )
+        activations = activations_dict['activations']
+        outputs = activations_dict['output']
 
         # move tensors to CPU for memory issues and store it
         all_activations.append(activations.cpu())       # [batch, n_layers, n_heads, seq, d_head]
