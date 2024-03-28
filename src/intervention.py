@@ -364,11 +364,15 @@ def compute_indirect_effect(
         _type_: TBD
     """
     
-    all_tokenized_prompt, all_important_ids, all_correct_labels = tokenize_ICL(
+    tokenized_dict = tokenize_ICL(
         tokenizer, 
         ICL_examples = 0,       # zero-shot to avoid the model to learn the correct behaviour
         dataset = dataset
     )
+    all_tokenized_prompt = tokenized_dict['tokenized_prompts']
+    all_important_ids = tokenized_dict['important_ids']
+    all_correct_labels = tokenized_dict['correct_labels']
+
     # create a subset with aie_support elements
     idx_for_aie = random.sample(range(len(all_tokenized_prompt)), aie_support)
     selected_examples = [

@@ -99,7 +99,7 @@ def extract_activations(
 
 def get_mean_activations(
         tokenized_prompts: list[torch.Tensor], 
-        important_ids: list[int],
+        important_ids: list[list[int]],
         tokenizer: PreTrainedTokenizer,
         model: LanguageModel, 
         config: dict[str, Any],

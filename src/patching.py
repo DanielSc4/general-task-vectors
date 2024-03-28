@@ -14,7 +14,7 @@ def get_attribution_patching(
     model: LanguageModel, 
     tokenizer: PreTrainedTokenizer,
     config: dict[str, Any],
-    dataset: list[tuple[str, str | None]],
+    dataset: list[tuple[str, str]],
     ICL_examples: int = 4,
     ):
 

@@ -18,17 +18,16 @@ def build_prompt_txt(
     ):
     """Build the prompt following the default template. Provide a list of queries (length = n ICL examples)
     and a list of answers (length = n ICL examples)
-    [X] Last answer will not be used
 
     Args:
-        queries (list[str]): queries (ICL examples + final query)
-        answers (list[str]): answers (ICL examples)
+        queries (list[str]): queries (ICL examples + final query).
+        answers (list[str]): answers (ICL examples), must be one less than queries.
         pre_append_instruction (str | None): Optional instruction at the beginning of each prompt. Defaults to None.  
 
     Returns:
         full_prompt: full prompt following the default template with notation
     """
-    assert len(queries) == len(answers) + 1, 'queries and answers must have the same length'
+    assert len(queries) == len(answers) + 1, f'queries (len={len(queries)}) should have one more element than answers (len={len(answers)})'
 
     full_prompt = []
     if pre_append_instruction:
@@ -108,7 +107,7 @@ def tokenize_from_template(tokenizer, promtp_w_template: tuple[tuple[str, str]])
 def tokenize_ICL(
     tokenizer: PreTrainedTokenizer, 
     ICL_examples: int, 
-    dataset: list[tuple[str, str | None]],
+    dataset: list[tuple[str, str]],
     pre_append_instruction: str | None = None,
 ):
     """build ICL prompt from the dataset, tokenize it and return the tokenized prompt with the important ids.
@@ -116,7 +115,7 @@ def tokenize_ICL(
     Args:
         tokenizer (PreTrainedTokenizer): tokenizer from HuggingFace
         ICL_examples (int): number of ICL examples (excluding the last one without the solution)
-        dataset (list[tuple[str, optional str]]): list of tuples (query, answer).
+        dataset (list[tuple[str, str]]): list of tuples (query, answer).
         pre_append_instruction (str | None): Optional instruction at the beginning of each prompt. Defaults to None.  
 
     Returns:
@@ -147,7 +146,7 @@ def tokenize_ICL(
             queries, answers = zip(*group)
             
             # build ICL prompt with pre_append_instruction + queries + answers + ... + last_query
-            X_ICL = build_prompt_txt(queries=queries,answers=answers)
+            X_ICL = build_prompt_txt(queries=queries,answers=answers[:-1], pre_append_instruction=pre_append_instruction)
             # store ICL prompt and label (last answer)
             prompts.append(X_ICL)
 

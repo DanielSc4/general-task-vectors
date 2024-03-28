@@ -70,10 +70,13 @@ def main(
     print(f'{model_name} on {device} device')
     
     # generate prompts
-    tok_ret, ids_ret, correct_labels = tokenize_ICL(
+    tokenized_dict = tokenize_ICL(
         tokenizer, ICL_examples = icl_examples, dataset = dataset,
         pre_append_instruction=pre_append_instruction,
     )
+    tok_ret = tokenized_dict['tokenized_prompts']
+    ids_ret = tokenized_dict['important_ids']
+    correct_labels = tokenized_dict['correct_labels']
 
     # create a subset with mean_support elements
     print(f'[x] New dataset dimension after ICL: {len(tok_ret)}')

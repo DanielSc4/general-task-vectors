@@ -43,11 +43,13 @@ def evaluate_tv_multi_token(
 ):
     assert label_of_interest is not None, 'Please provide a label of interest for evaluation'
     
-    all_tokenized_prompt, all_important_ids, _ = tokenize_ICL(
+    tokenize_dict = tokenize_ICL(
         tokenizer=tokenizer,
         ICL_examples=0,
         dataset=prompts_from_dataset,
     )
+    all_tokenized_prompt = tokenize_dict['tokenized_prompts']
+    all_important_ids = tokenize_dict['important_ids']
 
     results = []
     pbar = tqdm(

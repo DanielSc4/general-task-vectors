@@ -5,7 +5,7 @@ import random
 import functools
 
 from nnsight import LanguageModel
-from transformers import AutoModelForCausalLM, AutoTokenizer, AutoConfig, BitsAndBytesConfig
+from transformers import BitsAndBytesConfig
 
 
 # thanks to https://stackoverflow.com/questions/31174295/getattr-and-setattr-on-nested-subobjects-chained-properties
